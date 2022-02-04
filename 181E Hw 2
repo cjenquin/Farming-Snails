@@ -1,0 +1,260 @@
+# HW 2.2
+# every real symmetric non-negative matrix sigma has a cholesky decomposition L such that:
+# sigma = t(L) %*% (L) for [ L = lower triangular matrix ].
+# if sigma is a covarience matrix it must be non-negative definite, so it has a Cholesky decomposition. 
+
+ cov_mtx <- matrix(c(2,1,1,4), nrow = 2, ncol = 2)
+ L = chol(cov_mtx)
+ sigma = t(L) %*% L
+ 
+ # we know that the values of sigma that are not on the diagonal represent 
+ # an expression of covarience between entries whose variences are expressed in the diagonal elements.
+ # cov(x,y) = corr(x,y)*(var(x)*var(y))^(1/2) in the 2-variable case (like sigma), so:
+ cov_x_y = sigma[1,2]
+ var_x = sigma[1,1]
+ var_y = sigma[2,2]
+ 
+ corr_x_y = (sigma[1,2] / (var_x*var_y)^(1/2))
+ 
+ # the below will return a correlation matrix
+ Q = diag(diag(cov_mtx),2,2)
+ corr = solve(Q) %*% cov_mtx %*% solve(Q)
+ 
+ 
+#  HW 2.3
+# we would like to demonstrate that matrix "example" is not positive definite, or that there exists some vector (q) s.t.
+# t(q) * example * q    results in a number less or equal to zero. 
+# we note that the matrix "example" has a negative eigenvalue. This means that the multiplication of the "example" with the 
+# appropriate eigenvector will result in this negative eigenvalue, proving that the matrix is NOT positive definite.
+ 
+ example = matrix(c(2,3,3,4), nrow = 2, ncol = 2)
+ ex_vect = eigen(example)
+ 
+ # let q equal the eigenvector corresponding to the negative eigenvalue. 
+ 
+ q = c(-0.8112422, 0.5847103)
+ zero.or.less = t(q) %*% example %*% q
+ 
+#  HW 2.4
+ 
+ 
+# HW 2.5
+ 
+ N <- 100 
+ mu_1 <- 1
+ mu_2 <- 2
+ mu_vect <- c(mu_1, mu_2)
+ 
+ cov_mtx <- matrix(c(2,1,1,4), nrow = 2, ncol = 2)
+
+ # we take the cholesky factor to enure a diagonalized decomposition.
+ 
+ M <- t(chol(cov_mtx))
+ # cov_mtx = M %*% t(M)
+ # we generate N 2x1 vectors of normally distributed terms to act as error values in the simulation
+ Z <- matrix(rnorm(2*N), nrow = 2, ncol = N)  # 2 rows, N/2 columns
+ 
+ # We multiply this error matrix by the previously determined Cholesky factor so that the covariance matrices produced by each row will be non-negative definite
+
+ # to test the means of X_1 and X_2, we can take means of the entire column [,1] and [,2], respectively
+ mu_1_hat = mean(bvn2[,1])
+ mu_2_hat = mean(bvn2[,2])
+ # We also add our desired mean of (1,2). Since our errors were drawn with a mean of zero, the new expected value of the affine transformation should be the vector (1,2)
+ bvn2 <- t(M %*% Z) + matrix(rep(mu_vect, N), byrow = TRUE, ncol = 2)
+ 
+ # we can treat the variance the same way
+ sig_1_hat = var(bvn2[,1])
+ sig_2_hat = var(bvn2[,2])
+ 
+ cor(bvn2)
+ 
+mean_cov =0
+ 
+  for (i in (1:N)){
+    cov_matrix = bvn2[i,] %*% t(bvn2[i,])
+    mean_cov = mean_cov + cov_matrix[1,2]/99
+  }
+ rho_hat = mean_cov/(2*sqrt(2))
+ 
+ 
+ # matrix(rep(mu_vect, N), byrow = TRUE, ncol = 2)
+ Z_1 <- matrix(rnorm(100), nrow = 2, ncol = 100)
+ bvn2_1 <- t(M %*% Z_1) + matrix(rep(mu_vect, 100), byrow = TRUE, ncol = 2)
+ 
+ 
+# HW 2.13
+ 
+ lambda <- pi/4
+ phi <- 2*pi*runif(1)
+ A <- rchisq(1,df=1)
+ time <- seq(1,100)
+ 
+ x <- A*cos(lambda*time + phi)
+ 
+ plot(ts(x),ylab="")
+ 
+ scrambled_A = seq(1,50)
+ scrambled_B = seq(1,50)
+ for(i in 1:50){
+   scrambled_A[i] = x[2*i - 1]
+   scrambled_B[i] = x[2*i]
+ }
+ # scrambled_A now has the odd terms of x, scrambled_B now has the even terms of x
+ plot(ts(c(scrambled_A,scrambled_B)), ylab = "")
+ 
+ plot(ts(sample(x)), ylab = "")
+ 
+ 
+# HW 2.14
+ 
+ mu <- #mean
+ sig <- #variance
+ n <- #sample size
+ Z_1 <- rnorm(n, mu, sig)
+ theta <- rnorm(1, 0, 60)
+ 
+ z <- rt(101,df=4)
+ theta <- .9
+ x <- z[2:101] + theta*z[1:100]
+ plot(ts(x),ylab="")
+ 
+# HW 2.15
+#E(X_t) = E(X_t_1) + E(Z_t) = 0
+
+ phi <- 1
+ n <- 100
+ x <- 0
+ z <- rnorm(n)
+ for(t in 2:n) { x <- c(x,phi*x[t-1] + z[t])}
+ plot(ts(x),ylab="")
+ 
+ 
+ # the code above is written as an autoregression. We achieve a random walk by setting (phi = 1).
+ # the random walk graphs look like autoregression with phi close to 1, simulated below.
+ 
+ phi <- 0.95
+ n_3 <- 100
+ x <- 0
+ z_3 <- rnorm(n_3)
+ for(t in 2:n_3) { x <- c(x,phi*x[t-1] + z_3[t])}
+ plot(ts(x),ylab="")
+ 
+ 
+# HW 2.16
+# The previous problem resulted in a single vector with 100 entries. 
+# We want to split this into two vectors of 99 entries with a single-entry stagger
+
+ x_t = c(1:n-1)
+ x_t_1 = c(1:n-1)
+ 
+ for (i in 1:(n-1)){
+   x_t[i] = x[i+1]
+   x_t_1[i] = x[i]
+ }   
+    
+ lm(x_t ~ x_t_1)
+
+ # the value that appears below x_t_1 in the "Coefficients" section represents the best estimate for phi
+ 
+ 
+ # this is an attempt to hard-code the least-squares method of regression to estimate phi_hat
+ # These variables will hold mean values for X sub t and X sub (t-1)
+ X_t_1_bar = 0
+ X_t_bar = 0
+ 
+ # these variables will hold values for the sum of products of X sub t with X sub (t-1), and X sub (t-1) with itself.
+ joint_sum = 0
+ squared_sum = 0
+ 
+ 
+ # the code for 2.15 gives us a single vector with 100 entries.
+ # to showcase the method of linear regression consolidate this vector into two mean values and a sum of squares ratio
+ for (i in 1:(n-1)){
+   X_t_1_bar = X_t_1_bar + x[i]/(n-1)
+ }
+ 
+ for (i in 1:(n-1)){
+   X_t_bar = X_t_bar + x[i+1]/(n-1)
+ }
+ 
+ for (i in 1:(n-1)){
+   joint_sum = joint_sum + x[i+1] * x[i]
+ }
+ 
+ for (i in 1:(n-1)){
+  squared_sum = squared_sum + (x[i]^2)
+ }
+ 
+phi_hat = (joint_sum - X_t*X_t_1*(n-1))/(squared_sum - (n-1)*X_t_1^2)
+
+# the hard-coded method of least squares results in a different phi_hat value than the lm() method. 
+ 
+# HW 2.20
+ 
+
+ # HW 2.31
+# 100 simulations of Gaussian Autoregression lag = 1, vectors are length 10
+# is it critical that x_0 be drawn from a distribution with VAR = sig^2/(1-phi^2)??
+vector_len <- 10
+phi_1 <- 0.9
+mean_1 = 0
+
+AR_1 <- function(n, mean, deviation, phi){
+ 
+   # if we want our sequence to be stationary, we should create x_0 like this
+  x_0 <- rnorm(1, 0, 1/sqrt(1-phi^2))
+  
+  error_vector = rnorm(n, mean, deviation)
+  
+  x_t = c(1:n)
+  x_t[1] = phi*x_0 + error_vector[1]
+  
+  for ( i in (2:n)){
+    x_t[i] = phi*x_t[i-1] + error_vector[i]
+  }
+return(x_t)
+}
+
+
+# to generate the 100 samples we can declare
+data = replicate(100, AR_1(n = 10, mean = 0, deviation = 1, phi = 0.9))
+# [data] is a 10x100 matrix 
+# we can take the variance across the rows data[#,] to determine the variance of {x_1, x_2,...x_10}
+# we know that Gaussian AR(1) is strictly stationary and its covariance matrix sigma should be Toeplitz
+# Since Gaussian AR(1) is strictly stationary, var(x_1) = var(x_2) = .... = var(x_n)
+#let's try writing a function for autocovariance and see how that goes.
+#
+# we know sigma should have sig^2/(1-phi^2) for all diagonal entries, and has autocovariance equation given by
+# aCOV(h) = sig^2*phi^(abs(h))/(1-phi^2),  which can give us all other covariance values based on their distance 
+# it is easy to show that the middle diagonal looks like the expected sigma, but very hard to estimate the other 90 entries of sigma
+#
+# we could take the mean of each row in a 10x1 vector and multiply it by its transpose to create an estimate for sigma
+# but this method does not use the var() function
+var_vect = c(1:10)
+for (i in (1:10)){
+  var_vect[i] = var(data[i,])
+}
+var_vect
+# this however does not give us a very good estimate
+
+
+
+#HW 2.32
+#
+# We want to treat a Moving Average dataset the same way as the Autoregression in the previous problem
+# Based on 2.5.5, var[x_t] = (1 + theta^2)*sig^2,  for this problem, apx: 1.36
+# COV(distance = 1) = theta*sig^2 ~ 0.6
+#COV(distance >= 2) = 0
+MA_1 <- function(n, theta, mean, sd){
+  error_vector = rnorm(n, mean, sd)
+  z_t_minus_1 = rnorm(1, mean, sd)
+  return_vector = c(1:n)
+  return_vector[1] = error_vector[1] + theta*z_t_minus_1
+  
+  for( i in (2:n)){
+    return_vector[i] = error_vector[i] + theta*return_vector[i-1]
+  }
+  return(return_vector)
+}
+data_32 = replicate(100, MA_1(10, 0.6, 0, 1))
+
