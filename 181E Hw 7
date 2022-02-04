@@ -1,0 +1,211 @@
+# 5.30
+# Root-flipping an MA(q)
+
+# this function takes an input coefficient vector and returns the causal representation of the MA(q)
+flip_MA <- function(q_vect){
+ 
+  roots = polyroot(q_vect)
+  q_2 = length(roots)
+  
+  MA_constant = 1
+  MA_coefficient_tags = c()
+  
+  for( i in (1:q_2)){
+    if( Mod(roots[i]) < 1) {
+
+      # this line generates our constant used to modify the variance 
+      # of our noise component. Note that the value of this coefficient
+      # is the inverse of the root at the same index
+      
+     MA_constant = MA_constant / roots[i]
+     # the variance of our white noise input to the moving average 
+     # must be multiplied by [MA_constant^2 / AR_constant^2]
+     
+     MA_coefficient_tags = append(MA_coefficient_tags, i)
+    }
+  }
+  for(i in MA_coefficient_tags){
+    roots[i] = 1/roots[i]
+  }
+  
+  # we want to create a matrix that contains rows of our roots taken to the powers 1 to q
+  # We do not know the coefficients of the polynomial, but since we know the values of our 
+  # roots, we can caluculate their powers and calculate the polynomial coefficients. 
+  
+
+  
+  empty_vars = rep(-1, q_2)
+  
+  matrix_begin = matrix(roots , ncol = 1)
+  
+
+  
+  for (i in (2:q_2)){
+    
+     roots_degree_q_minus_i = numeric(q_2)
+     
+    for( j in (1:q_2)){
+      
+      ## roots**i works
+      
+      roots_degree_q_minus_i[j] = roots[j]*(roots[j]^(i-1))
+    }
+     matrix_begin = cbind(matrix_begin, roots_degree_q_minus_i, deparse.level = 0)
+  }
+  
+  
+  coefficients = c(1, solve(matrix_begin, empty_vars))
+  output = list( coefficients, MA_constant^2, "the second value is the appropriate variance modification")
+  
+  return(output)
+}
+# if I have understood the book correctly, (roots)*c^2*Z_t  = X_t     should be the expression for the
+# invertible/causal MA(q)
+
+# variance of the noise component should be (constant^2*sigma^2) for Z_t ~ (0, sigma^2)
+# algebreically the roots of theta(z) = 1 +2.5z + z^2    are z = -0.5, z = -2
+  
+#  5.31
+flip_ARMA <- function(p_vect, q_vect, variance){
+  
+  AR_roots = polyroot(p_vect)
+  p_2 = length(AR_roots)
+  
+  MA_roots = polyroot(q_vect)
+  q_2 = length(MA_roots)
+  
+  AR_constant = 1
+  AR_coefficient_tags = c()
+  
+  MA_constant = 1
+  MA_coefficient_tags = c()
+  
+  
+  for( i in (1:p_2)){
+    if( Mod(AR_roots[i]) < 1) {
+    
+      # this line generates our constant used to modify the variance 
+      # of our noise component. Note that the value of this coefficient
+      # is the inverse of the root at the same index
+      
+      AR_constant = AR_constant/AR_roots[i]
+      # the variance of our white noise input to the moving average 
+      # must be multiplied by [MA_constant^2 / AR_constant^2]
+      
+      
+      # this line collects the index of AR roots to be flipped
+      AR_coefficient_tags = append(AR_coefficient_tags, i)
+    }
+  }
+  print(AR_constant)
+  
+  for( i in (1:q_2)){
+    if( Mod(MA_roots[i]) < 1) {
+       
+      # this line generates our constant used to modify the variance 
+      # of our noise component. Note that the value of this coefficient
+      # is the inverse of the root at the same index
+      
+      MA_constant = MA_constant/MA_roots[i]
+      
+      # the variance of our white noise input to the moving average 
+      # must be multiplied by [MA_constant^2 / AR_constant^2]
+      
+      # this line collects the index of MA roots to be flipped
+      MA_coefficient_tags = append(MA_coefficient_tags, i)
+    }
+  }
+  print(MA_constant)
+  
+  
+  # these loops flip the roots at the collected indices
+  
+  for( i in AR_coefficient_tags){
+    AR_roots[i] = 1/AR_roots[i]
+  }
+  
+  for(i in MA_coefficient_tags){
+    MA_roots[i] = 1/MA_roots[i]
+  }
+  
+  # we want to create a matrix that contains rows of our roots taken to the powers less than q, since
+  # we can solve for the qth power of the root given all prior powers and the coefficients of our 
+  # polynomial. We do not know the coefficients of the polynomial, but since we know the values of our 
+  # roots, we can caluculate their powers and calculate the polynomial coefficients. 
+ 
+  
+  AR_empty_vars = rep(-1, p_2)
+  MA_empty_vars = rep(-1, q_2)
+  
+  AR_matrix_begin = matrix(AR_roots , ncol = 1)
+  MA_matrix_begin = matrix(MA_roots , ncol = 1)
+  
+# this nested loop creates the solution matrix for our AR portion. This matrix will 
+# be used to solve for values of the polynomial coefficients output by our flipped
+# system. I am unsure if both AR and MA portions should be instatiated with a vector
+# composed of -1 values instead of 1 values.
+  
+  if(p_2 > 1){
+    for (i in (2:p_2)){
+      
+      AR_roots_degree_p_minus_i = numeric(p_2)
+      
+      for( j in (1:p_2)){
+        AR_roots_degree_p_minus_i[j] = AR_roots[j]*(AR_roots[j]^(i-1))
+      }
+      AR_matrix_begin = cbind(AR_matrix_begin, AR_roots_degree_p_minus_i, deparse.level = 0)
+    }
+  }
+  
+  
+  if(q_2 > 1){
+    for (i in (2:q_2)){
+      
+      MA_roots_degree_q_minus_i = numeric(q_2)
+      
+      for( j in (1:q_2)){
+        MA_roots_degree_q_minus_i[j] = MA_roots[j]*(MA_roots[j]^(i-1))
+      }
+      MA_matrix_begin = cbind(MA_matrix_begin, MA_roots_degree_q_minus_i, deparse.level = 0)
+    }
+  }
+  
+  
+  
+  AR_coefficients = c(1, solve(AR_matrix_begin, AR_empty_vars))
+  MA_coefficients = c(1, solve(MA_matrix_begin, MA_empty_vars))
+  
+  # this line is the only line in which we use the input variable [variance]
+  # to calculate the resulting variance of our white noise in the flipped ARMA equation
+  output = list( AR_coefficients, MA_coefficients, 
+                 "the coefficients increase by degree from left to right (AR on top, then MA), the rightmost is the coefficient for a degree(0) variable",
+                 
+                 variance * ((MA_constant^2)/(AR_constant)^2), 
+                 "the value in [[4]] is the appropriate variance modification to be multiplied with the original white noise variance")
+  
+  return(output)
+}
+
+
+
+# 6.4
+#
+
+sp_dense_MA1 <- function(lamb_0, lamb_1){
+  
+  lambda_vect = seq(-pi, pi, length.out = 1000)
+  
+  density = lamb_0 + 2*lamb_1*cos(lambda_vect)
+  plot(lambda_vect, density, type = "l")
+}
+
+SpD_MA1 <- function(rho_1){
+  
+  lambda_vect = seq(-pi, pi, length.out = 1000)
+  
+  density = 1 + 2*rho_1*cos(lambda_vect)
+  
+  plot(lambda_vect, density, type = 'l')
+}
+
+
