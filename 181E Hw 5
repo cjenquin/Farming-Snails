@@ -1,0 +1,133 @@
+##4.20
+## write a program that takes three vectors x, y, w, as inputes, and computes the projection of w onto
+# the space spanned by x and y to find projection of w onto x,y, use 4.4.2 normal equations to perform projection
+
+ortho_projection <- function(x, y, w){
+  
+  x_w = t(x) %*% w
+  y_w = t(y) %*% w
+  
+  x_x = t(x) %*% x
+  y_y = t(y) %*% y
+  x_y = t(x) %*% y
+  
+  
+  covmatrix_x_y = matrix(c(x_x, x_y, x_y, y_y), ncol = 2)
+  
+  a_b_vector = solve(covmatrix_x_y) %*% c(x_w, y_w)
+  w_hat = a_b_vector[1]*x + a_b_vector[2]*y
+  
+  return(w_hat)
+}
+
+##4.24
+## Simlulate 1000 bivariate gaussian RVs from the distribution in E. 4.17 with rho = 0.9
+# compute the projection x^_2 of the second component on to the first component for each simulation, 
+## and plot (x1, x^_2) for each of the 1000 draws.
+
+rho = 0.9
+A = matrix(c(1, rho, 0, sqrt(1-rho^2)), ncol = 2)
+
+Z = matrix (rnorm(2000), 2, 1000)
+
+bivariate_N = A %*% Z
+
+projection_onto_x1 = c(1:1000)
+just_x1 = c(1:1000)
+
+for(i in (1:1000)){
+  
+# projection x_2 onto x_1 = X_1 * ||x2||*cos(theta)/||x2)|| = X_1 * rho    since var(x1) = var(x2)
+# using hypothetical values results in a different answer than using the test data in pairs
+  
+ projection_onto_x1[i] = rho*Z[1,i]
+  
+  #projection_onto_x1[i] = (Z[1,i] %*% Z[2,i]) / (Z[1,i] %*% Z[1,i])*Z[1,i]
+  
+  just_x1[i] = Z[2,i]
+}
+
+plot(just_x1, projection_onto_x1)
+
+
+##4.32
+# Write an R program that computes the one-step-ahead foredcast and predition error quantities for given
+# inputs of x1, x2, and the autocovariance function at lags 0, 1, 2
+# x^_n+1 = E[x^_n+1 | x_1 -> x_n]
+
+plus_one_forecast <- function(x_1, x_2, cov_0, cov_1, cov_2){
+  
+  cov_n = c(cov_1, cov_2)
+  
+  column_1 = c(cov_0, cov_1)
+  column_2 = c(cov_1, cov_0)
+  
+  gamma_n = matrix(c(column_1, column_2), ncol = 2)
+  n_ammag = solve(gamma_n)
+  
+# we solve for coefficients phi_1, phi_2,....phi_n
+  phi_n = n_ammag %*% cov_n 
+  
+# calculate MSE with Eq. 4.5.6
+  lin_MSE = cov_0 - t(cov_n) %*% n_ammag %*% cov_n
+  
+  
+  return_vector = c(x_2*phi_n[1] + x_1*phi_n[2], lin_MSE)
+  
+  return(return_vector)
+}
+
+
+##4.33
+#consider the example of an MA(2) process,
+theta_1 = 1
+theta_2 = 1/4
+
+sigma = 1
+
+covariance_0 = (1 + theta_1^2 + theta_2^2)*sigma^2
+covariance_1 = (theta_1 + theta_1*theta_2)*sigma^2
+covariance_2 = theta_2*sigma^2
+
+col_1 = c(covariance_0, covariance_1)
+
+
+cov_n = c(covariance_1, covariance_2)
+
+gamma_n = matrix(c(col_1, rev(col_1)), ncol = 2)
+
+
+phi_n = solve(gamma_n) %*% cov_n
+
+phi_1 = phi_n[1,]
+phi_2 = phi_n[2,]
+
+x_n_plus_1 = c(1:1000)
+
+Z_n = rnorm(1002)
+
+for( i in c(1:1000)){
+  temp = plus_one_forecast(x_1 = Z_n[i+2], 
+                           x_2 = Z_n[i+1], 
+                           cov_0 = covariance_0, 
+                           cov_1 = covariance_1, 
+                           cov_2 = covariance_2 )
+  x_n_plus_1[i] = temp[1]
+
+}
+
+simulated = c(1:1000)
+for(i in c(1:1000)){
+  simulated[i] = phi_1*Z_n[i] + phi_2*Z_n[i+1] + Z_n[i+2]
+}
+
+plot(simulated, x_n_plus_1)
+
+# use the code of E.4.32 to compute the one-step-ahead forecast coefficients
+#simulate 1000 values from the MA(2) process and forecast one-step ahead for each simulation
+#generate a scatterplot of the similated values against their one-step-ahead forecasts
+
+
+
+
+##4.44
