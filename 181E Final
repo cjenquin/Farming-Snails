@@ -1,0 +1,1605 @@
+
+# This final submission proceeds as follows:
+# Exercise E
+# 9.45, 9.46, 9.47
+# Exercise G
+# Exercise H
+# 10.6
+# 11.12, 11.19, 11.21
+# Exercise K
+# Exercise I, J in a PDF 
+
+
+
+
+
+
+## Exercise E
+#(i) Simulate a stretch of 100 data points from an AR(2) model with phi_1=0.5, phi_2=0.2 and standard normal errors;
+#give the time series plot.
+
+# to generate an AR(2), we can use a simplified version of the ARMA_21() function created in homework 9
+# this function takes a n output size and a vector of phi coefficients for the ARMA(2,1)
+ARMA_20 = function(phi_vec, n){
+  
+  sample = rnorm(n)
+  
+  # apply the filter function to the normal sample
+  AR_2 = filter(sample, phi_vec, method = "recursive")
+  
+  
+  # now AR_2 represents our data
+  return(AR_2)
+}
+
+phi = c(0.5, 0.2)
+ts.plot(ts(ARMA_20(phi, 100)))
+# the plot confirms the AR(2) looks about correct, with mean staying near zero
+
+
+#(ii) Forget that it was you who generated the data, and use the 100 data points to estimate the acf and pacf for 
+#lags up to 20. Can you confirm that the pacf is negligible for lags bigger than two?
+
+# first we generate a sample of size 100
+sample_size = 100
+
+X_t = ARMA_20(phi, sample_size)
+mu_AR2 = mean(X_t)
+
+# I will use a hard-coded method as well as the built in R functions to test this data
+lag = 20
+ACVF_estimate = numeric(lag)
+
+for(i in (1:lag)){
+  
+  n = sample_size - i + 1
+  ACVF_estimate[i] = (1/sample_size) * sum((X_t[1:n] - mu_AR2) * (X_t[i:sample_size] - mu_AR2))
+}
+ts.plot(ts(ACVF_estimate))
+# we see that in a hard-coded estimation, the values of the ACF drop significantly before lag of 5
+
+
+acf(X_t, lag.max = 20, type = "covariance")
+pacf(X_t, lag.max = 20, type = "covariance")
+# the PACF shows that after a lag of 2, PACF at later lags falls within the confidence interval of no covariance, or
+# I.I.D for lags greater than 2 as expected. 
+
+acf(X_t, lag.max = 20, type = "correlation")
+pacf(X_t, lag.max = 20)
+# the graphs of correlation show the same pattern. The ACF plots indicate that at a lag of 4, there are still significant 
+# deviations from a hypothesis of independence, but the same is not shown for the pACF
+
+
+#(iii) How would you fit an AR(1) model to your dataset, i.e., how would you estimate the single phi coefficient 
+#of an AR(1) model?
+
+# To fit an AR(1) model to this data, we could use a linear regression to estimate the best fit parameter phi.
+# In an AR(1):  X_t = phi_1 * X_t_minus_1 + Z_t,    in this form, we see that a linear model will be an appropriate estimate
+# so long as the constant term is sufficiently close to zero.
+
+lm(X_t[2:sample_size] ~ X_t[1:(sample_size-1)] )
+
+
+
+
+
+
+
+#9.45
+
+# instead of using b = 0.2, 0.4, 0.6, we can use a direct calculation of d
+# d = C/ floor(n^1/3)/rfloor
+# d = C[N^{1/3}]    for C = 2,4,6
+
+
+# here are some functions we will need for this problem and later.
+
+# to generate the data sets of 9.4(5,6,7) we will use the same ARMA_21() function created in homework 9
+ARMA_21 = function(omega, rho, n){
+  phi_1 = 2*rho*cos(omega)
+  phi_2 = -(rho^2)
+  th_1 = -rho*cos(omega)
+  
+  AR_coefficients = c(phi_1, phi_2)
+  MA_coefficients = c(1, th_1)
+  
+  
+  sample = rnorm(n + 1)
+  
+  MA_1 = filter(sample, MA_coefficients, method = "convolution", sides =  1)[2:(n + 1)]
+  AR_2 = filter(MA_1, AR_coefficients, method = "recursive")
+  
+  
+  # now AR_2 represents our data
+  return(AR_2)
+}
+
+
+# this function caluclates a Bartlett taper of width d at frequency lambda
+# Returns the value of the spectral density at frequency lambda
+tapered_spectral_estimator = function(gamma_vec, lambda, d){
+  
+  F_W = numeric(d + 1)
+  F_W[1] = gamma_vec[1]
+  
+  for(i in (1:d)){
+    F_W[i+1] = (1 - i/d)*gamma_vec[i+1] * 2*cos(lambda*i)
+  }
+  
+  return(sum(F_W))
+}
+
+
+# this function performs a similar process to the acf() function, but returns only a vector of 
+# ACF estimates
+sample_acvf <- function(data){
+  n = length(data)
+  mu = mean(data)
+  
+  estimate_vec = numeric(n)
+  for(i in (1:n)){
+    t = n - i + 1
+    # [1:t] represents the changing index of the sample X_t, while [i:n] represents the index of X_t+k
+    # recall that n is the size of our sample
+    
+    estimate_vec[i] = (1/n) * sum((data[1:t] - mu) * (data[i:n] - mu))
+  }
+  return(estimate_vec)
+}
+
+## This function calculates the theoretical spectral density of our cyclic ARMA(2,1) 
+# Running a for() loop over a vector of lambdas results in a full spectrum of spectral density
+f_of_L = function(L, p, w, sd){
+  k = sd^2 * (1 + (p^2)*(cos(w)^2) - 2*p*cos(w)*cos(L)) / (1 + 4*(p^2)*(cos(w)^2) + p^4 - 4*p*(1+p^2)*cos(w)*cos(L) + 2*p^2*cos(2*L))
+  return(k)
+}
+
+
+
+
+# we will calculate a single ARMA(2,1) sample for n = 400. In successive trials with less n, we will smaller portions
+# of the same data. Hopefully this will be more consistent as taking new samples can drastically change the appearence
+# of the Spectral Density plots
+
+p = 0.8
+w = pi/6
+n = 400
+ARMA_sample = ARMA_21(w, p, n)
+
+
+# I want to operate with ACF estimates in vector form, not from a dataframe
+# to this end, I will use a hard-coded method with a Bartlett taper
+# The next lines plot the ACF caluculated by the R function compared to the results of my home-cooked function.
+ACVF_estimate_ARMA_21 = sample_acvf(ARMA_sample)
+ts.plot(ts(ACVF_estimate_ARMA_21))
+ACF_estimates = acf(ARMA_sample, lag.max = n, type = "covariance")
+lines(c(1:n), ACVF_estimate_ARMA_21, col = 'red')
+
+
+lambda_L = seq(-pi, pi, length.out = n)
+
+C = c(2, 4, 6)
+d = C* floor(n^(1/3))
+
+colors = c('red', 'blue', 'green')
+
+# plot the true SPD for comparison
+True_SPD = f_of_L(lambda_L, p, w, 1)
+plot(lambda_L, True_SPD, type = 'l')
+
+
+
+# each iteration of the loop with plot the tapered estimate in a different color
+
+for(i in (1:length(d))){
+  
+  f_omega_trial_2 = numeric(n)
+  
+  for( l in (1:n)){
+    f_omega_trial_2[l] = tapered_spectral_estimator(ACVF_estimate_ARMA_21, lambda_L[l], d[i])
+  }
+  
+  lines(lambda_L, f_omega_trial_2, col = colors[i])
+  
+}
+
+# In the graph I am currently looking at, C = 4  --> d = 16 provides the best estimate of the true Spectral Density while
+# higher d results in an undersmoothing with far too many local features preserved
+
+
+
+
+# now we change our value of n and observe the results
+
+n = 200
+ARMA_sample = ARMA_sample[1:n]
+
+
+# I want to operate with ACF estimates in vector form, not from a dataframe
+# to this end, I will use a hard-coded method with a Bartlett taper
+ACVF_estimate_ARMA_21 = sample_acvf(ARMA_sample)
+
+
+
+lambda_L = seq(-pi, pi, length.out = n)
+ts.plot(ts(ACVF_estimate_ARMA_21))
+
+ACF_estimates = acf(ARMA_sample, lag.max = n-1 , type = "covariance")
+lines(ACVF_estimate_ARMA_21[-1], col = 'red')
+
+
+
+
+C = c(2, 4, 6)
+d = C* floor(n^(1/3))
+
+colors = c('red', 'blue', 'green')
+
+# plot the true SPD for comparison
+True_SPD = f_of_L(lambda_L, p, w, 1)
+plot(lambda_L, True_SPD, type = 'l')
+
+
+
+# each iteration of the loop with plot the tapered estimate in a different color
+
+for(i in (1:length(d))){
+  
+  f_omega_trial_2 = numeric(n)
+  
+  for( l in (1:n)){
+    f_omega_trial_2[l] = tapered_spectral_estimator(ACVF_estimate_ARMA_21, lambda_L[l], d[i])
+  }
+  
+  lines(lambda_L, f_omega_trial_2, col = colors[i])
+  
+}
+
+# In the trial I write about, I see none of our estimates achieving a graph nicely aligned with the true SPD. 
+# For C = 6, the height of the main peaks is closer to that of the true SPD, but at the cost of noise in 
+# frequencies further from 0. 
+
+# C = 4 provides a decent estimate, but with significantly reduced peaks. 
+
+# C = 2 is a smoother shape, and captures the primary information of the periodogram, but with 
+# less precise magnitude
+
+
+
+
+
+
+# We change n one more time and observe the results
+
+n = 100
+
+ARMA_sample = ARMA_sample[1:n]
+
+
+# I want to operate with ACF estimates in vector form, not from a dataframe
+# to this end, I will use a hard-coded method with a Bartlett taper
+ACVF_estimate_ARMA_21 = sample_acvf(ARMA_sample)
+
+ts.plot(ts(ACVF_estimate_ARMA_21))
+
+ACF_estimates = acf(ARMA_sample, lag.max = n , type = "covariance")
+lines(c(0:99),ACVF_estimate_ARMA_21, col = 'red')
+
+
+lambda_L = seq(-pi, pi, length.out = n)
+
+
+
+C = c(2, 4, 6)
+d = C* floor(n^(1/3))
+
+colors = c('red', 'blue', 'green')
+
+# plot the true SPD for comparison
+True_SPD = f_of_L(lambda_L, p, w, 1)
+plot(lambda_L, True_SPD, type = 'l')
+
+
+
+# each iteration of the loop with plot the tapered estimate in a different color
+
+for(i in (1:length(d))){
+  
+  f_omega_trial_2 = numeric(n)
+  
+  for( l in (1:n)){
+    f_omega_trial_2[l] = tapered_spectral_estimator(ACVF_estimate_ARMA_21, lambda_L[l], d[i])
+  }
+  
+  lines(lambda_L, f_omega_trial_2, col = colors[i])
+  
+}
+
+# The accuracy of the model depends very highly on the data produced by the ARMA_21 model. For some trials, the 
+# main peaks are far below that of the true SPD, while for others, C = 4 provides nearly perfect estimates. 
+# however, in most trials, C = 6 provides a noisier plot with more local features than the true SPD, while C = 2
+# provides an over-smoothed representation of the spectral density
+
+
+
+
+
+
+
+
+## 9.46
+# this question asks us to perform an identical task as 9.45, but with a different taper parameter
+# we alter the code of the Bartlett tapered spectral estimator tapered_spectral_estimator
+
+
+
+# I don't like the graphs output by the acf() function, so I made my own using the Bartlett taper method
+sample_acvf <- function(data){
+  n = length(data)
+  mu = mean(data)
+  
+  estimate_vec = numeric(n)
+  for(i in (1:n)){
+    t = n - i + 1
+    # [1:t] represents the changing index of the sample X_t, while [i:n] represents the index of X_t+k
+    # recall that n is the size of our sample
+    
+    estimate_vec[i] = (1/n) * sum((data[1:t] - mu) * (data[i:n] - mu))
+  }
+  return(estimate_vec)
+}
+
+
+
+
+Trapezoid_Taper <- function(gamma_vec, lambda, proportion, d){
+  # gamma_vec is a length n vector of autocovariances
+  # lambda is a real-values frequency
+  # c is a real number in (0 ,1]
+  # d is an integer representing the number of autocovariances we wish to include in the taper
+  
+  F_W = numeric(d)
+  c = proportion*d
+  
+  for (i in (1:c)){
+    F_W[i] = gamma_vec[i] * 2 * cos(lambda*(i-1))
+  }
+  for(i in ((c+1):d)){
+    F_W[i] = (1 - (i-c)/(d-c)) * gamma_vec[i] * 2*cos(lambda*(i-1))
+  }
+  return(sum(F_W))
+}
+## this is an alternate version of the trapazodial taper
+
+
+periodogram = function(gamma_vec){
+  
+  n = length(gamma_vec)
+  L = seq(-pi, pi, length.out = n) 
+  
+  f_model = numeric(n)
+  
+  for (i in (1:n)){
+    sum_L_k = gamma_vec[1]
+    
+    for(k in (2:n)){
+      sum_L_k = sum_L_k + gamma_vec[k]*2*cos(k * L[i])
+    }
+    f_model[i] = sum_L_k
+  }
+  return(f_model)
+}
+
+
+
+
+p = 0.8
+w = pi/6
+n = 100
+ARMA_sample = ARMA_21(w, p, n)
+
+acf_estimates_1 = sample_acvf(ARMA_sample)
+
+n = length(acf_estimates_1)
+lambda_L = seq(-pi, pi, length.out = n)
+plot(lambda_L, acf_estimates_1, type = 'l')
+
+True_SPD = f_of_L(lambda_L, p, w, 1)
+plot(lambda_L, True_SPD, type = 'l')
+
+constant = c(2, 4, 6)
+# d marks the end of the taper
+# just like smaller d resulted in smoother graph in 9.45, smaller d results in smoother graph in 9.46
+d = constant * floor(n^(1/3))
+
+# c denotes the proportion of the taper d that will be rectangular
+c = 0.25
+
+colors = c('red', 'blue', 'green')
+trapezodial_taper_f = numeric(n)
+
+
+for( j in (1:3)){
+  
+  for( k in (1:n)){
+    trapezodial_taper_f[k] = Trapezoid_Taper(acf_estimates_1, lambda_L[k], c, d[j])
+    
+    # red --> smallest d,  blue --> middle d,  green --> largest d 
+  }
+  lines(lambda_L, trapezodial_taper_f, col = colors[j])
+}
+
+
+# Here we plot the graph for largest d and compare with the un-altered periodogram and true SPD
+plot(lambda_L, trapezodial_taper_f, col = 'purple', type = 'l')
+for( j in (1:3)){
+  
+  for( k in (1:n)){
+    trapezodial_taper_f[k] = Trapezoid_Taper(acf_estimates_1, lambda_L[k], c, d[j])
+    
+    # red --> smallest d,  blue --> middle d,  green --> largest d 
+  }
+  lines(lambda_L, trapezodial_taper_f, col = colors[j])
+}
+
+plot(lambda_L, trapezodial_taper_f, col = 'purple', type = 'l')
+No_taper = periodogram(acf_estimates_1)
+lines(lambda_L, No_taper, col = 'orange')
+lines(lambda_L, True_SPD)
+## the difficult part is that my taper appears to go to 2 instead of to 0
+
+
+# now we try c = 0.5
+c = 0.5
+plot(lambda_L, True_SPD, type = 'l')
+colors = c('red', 'blue', 'green')
+trapezodial_taper_f = numeric(n)
+
+
+for( j in (1:3)){
+  
+  for( k in (1:n)){
+    trapezodial_taper_f[k] = Trapezoid_Taper(acf_estimates_1, lambda_L[k], c, d[j])
+    
+    # red --> smallest d,  blue --> middle d,  green --> largest d 
+  }
+  lines(lambda_L, trapezodial_taper_f, col = colors[j])
+}
+
+# Here we plot the graph for largest d and compare with the un-altered periodogram and true SPD
+plot(lambda_L, trapezodial_taper_f, col = 'purple', type = 'l')
+No_taper = periodogram(acf_estimates_1)
+lines(lambda_L, No_taper, col = 'orange')
+lines(lambda_L, True_SPD)
+
+# Again, we see the taper hitting an asymptote near zero, and the peaks of the estimate being far greater
+# than the true peaks of the SPD  for all but the smallest values of d.
+
+# The change in c is a bit difficult to describe, but it seems to make the graph appear somewhat sharper.
+# The distance in between peaks and troughs is slightly more pronounced. As a result, the undulations are
+# slimmer, but perhaps not more accurate.
+
+
+# Now we try the same procedure with a larger sample
+# with n = 200, we see that our taper is highly acurate near a frequency of zero. The middle d value 
+# preserves noticably fewer local features than the highest d value, though both are fairly far from the true
+# value of the SPD for frequencies of magnitude greater than 1.
+
+n = 200
+
+ARMA_sample_2 = ARMA_21(w, p, n)
+
+acf_estimates_2 = sample_acvf(ARMA_sample_2)
+
+n = length(acf_estimates_2)
+lambda_L_2 = seq(-pi, pi, length.out = n)
+plot(lambda_L_2, acf_estimates_2, type = 'l')
+
+True_SPD_2 = f_of_L(lambda_L_2, p, w, 1)
+plot(lambda_L_2, True_SPD_2, type = 'l')
+
+constant = c(2, 4, 6)
+# d marks the end of the taper
+# just like smaller d resulted in smoother graph in 9.45, smaller d results in smoother graph in 9.46
+d = constant * floor(n^(1/3))
+
+# c denotes the proportion of the taper d that will be rectangular
+c = 0.25
+
+colors = c('red', 'blue', 'green')
+trapezodial_taper_f = numeric(n)
+
+
+for( j in (1:3)){
+  
+  for( k in (1:n)){
+    trapezodial_taper_f[k] = Trapezoid_Taper(acf_estimates_2, lambda_L_2[k], c, d[j])
+    
+    # red --> smallest d,  blue --> middle d,  green --> largest d 
+  }
+  lines(lambda_L_2, trapezodial_taper_f, col = colors[j])
+}
+
+
+# Here we plot the graph for largest d and compare with the un-altered periodogram and true SPD
+plot(lambda_L_2, trapezodial_taper_f, col = 'purple', type = 'l')
+No_taper = periodogram(acf_estimates_2)
+lines(lambda_L_2, No_taper, col = 'orange')
+lines(lambda_L_2, True_SPD_2)
+
+
+
+# now we try c = 0.5
+c = 0.5
+plot(lambda_L_2, True_SPD_2, type = 'l')
+colors = c('red', 'blue', 'green')
+trapezodial_taper_f = numeric(n)
+
+
+for( j in (1:3)){
+  
+  for( k in (1:n)){
+    trapezodial_taper_f[k] = Trapezoid_Taper(acf_estimates_2, lambda_L_2[k], c, d[j])
+    
+    # red --> smallest d,  blue --> middle d,  green --> largest d 
+  }
+  lines(lambda_L_2, trapezodial_taper_f, col = colors[j])
+}
+
+# Here we plot the graph for largest d and compare with the un-altered periodogram and true SPD
+plot(lambda_L_2, trapezodial_taper_f, col = 'purple', type = 'l')
+No_taper = periodogram(acf_estimates_2)
+lines(lambda_L_2, No_taper, col = 'orange')
+lines(lambda_L_2, True_SPD_2)
+
+
+
+# We increase n one more time and try the plot with an even larger sample size
+# for n = 400, after many trials, the plots do not seem significantly different from the plots with smaller n
+# Again, smaller values of d result in the omission of local features, with the middle value for d performing
+# slightly better than the highest and lowest tested.
+n = 400
+
+ARMA_sample_3 = ARMA_21(w, p, n)
+
+acf_estimates_3 = sample_acvf(ARMA_sample_3)
+
+n = length(acf_estimates_3)
+lambda_L_3 = seq(-pi, pi, length.out = n)
+plot(lambda_L_3, acf_estimates_3, type = 'l')
+
+True_SPD_3 = f_of_L(lambda_L_3, p, w, 1)
+plot(lambda_L_3, True_SPD_3, type = 'l')
+
+constant = c(2, 4, 6)
+# d marks the end of the taper
+# just like smaller d resulted in smoother graph in 9.45, smaller d results in smoother graph in 9.46
+d = constant * floor(n^(1/3))
+
+# c denotes the proportion of the taper d that will be rectangular
+c = 0.25
+
+colors = c('red', 'blue', 'green')
+trapezodial_taper_f = numeric(n)
+
+
+for( j in (1:3)){
+  
+  for( k in (1:n)){
+    trapezodial_taper_f[k] = Trapezoid_Taper(acf_estimates_3, lambda_L_3[k], c, d[j])
+    
+    # red --> smallest d,  blue --> middle d,  green --> largest d 
+  }
+  lines(lambda_L_3, trapezodial_taper_f, col = colors[j])
+}
+
+
+# Here we plot the graph for largest d and compare with the un-altered periodogram and true SPD
+plot(lambda_L_3, trapezodial_taper_f, col = 'purple', type = 'l')
+No_taper = periodogram(acf_estimates_3)
+lines(lambda_L_3, No_taper, col = 'orange')
+lines(lambda_L_3, True_SPD_3)
+
+
+
+# now we try c = 0.5
+c = 0.5
+plot(lambda_L_3, True_SPD_3, type = 'l')
+colors = c('red', 'blue', 'green')
+trapezodial_taper_f = numeric(n)
+
+
+for( j in (1:3)){
+  
+  for( k in (1:n)){
+    trapezodial_taper_f[k] = Trapezoid_Taper(acf_estimates_3, lambda_L_3[k], c, d[j])
+    
+    # red --> smallest d,  blue --> middle d,  green --> largest d 
+  }
+  lines(lambda_L_3, trapezodial_taper_f, col = colors[j])
+}
+# increasing c, as noted in prior comments, increases the differences between peaks and troughs, enhancing 
+# local features. The height of the main peaks seem to align somewhat better with the true SPD when the 
+# c value is higher. In the trial I am writing my comments after, the red curve (lowest d) looks the most 
+# like the true SPD but with a thicker tail. The plots for higher d values are undersmoothed.
+
+
+
+# Here we plot the graph for largest d and compare with the un-altered periodogram and true SPD
+plot(lambda_L_3, trapezodial_taper_f, col = 'purple', type = 'l')
+No_taper = periodogram(acf_estimates_3)
+lines(lambda_L_3, No_taper, col = 'orange')
+lines(lambda_L_3, True_SPD_3)
+
+
+
+
+
+
+## 9.47
+# this function performs a similar process to the acf() function, but returns only a vector of 
+# ACF estimates
+sample_acvf <- function(data){
+  n = length(data)
+  mu = mean(data)
+  
+  estimate_vec = numeric(n)
+  for(i in (1:n)){
+    t = n - i + 1
+    # [1:t] represents the changing index of the sample X_t, while [i:n] represents the index of X_t+k
+    # recall that n is the size of our sample
+    
+    estimate_vec[i] = (1/n) * sum((data[1:t] - mu) * (data[i:n] - mu))
+  }
+  return(estimate_vec)
+}
+
+## to calculate true SPD
+# take f_of_L with a lambda vector
+f_of_L = function(L, p, w, sd){
+  k = sd^2 * (1 + (p^2)*(cos(w)^2) - 2*p*cos(w)*cos(L)) / (1 + 4*(p^2)*(cos(w)^2) + p^4 - 4*p*(1+p^2)*cos(w)*cos(L) + 2*p^2*cos(2*L))
+  return(k)
+}
+
+
+# this function produces an ARMA(2,1) of size n
+ARMA_21 = function(omega, rho, n){
+  phi_1 = 2*rho*cos(omega)
+  phi_2 = -(rho^2)
+  th_1 = -rho*cos(omega)
+  
+  AR_coefficients = c(phi_1, phi_2)
+  MA_coefficients = c(1, th_1)
+  
+  
+  sample = rnorm(n + 1)
+  
+  MA_1 = filter(sample, MA_coefficients, method = "convolution", sides =  1)[2:(n + 1)]
+  AR_2 = filter(MA_1, AR_coefficients, method = "recursive")
+  
+  
+  # now AR_2 represents our data
+  return(AR_2)
+}
+
+
+# this function calculates spectral density at frequency lambda with a Bartlett taper
+tapered_spectral_estimator = function(gamma_vec, lambda, d){
+  
+  F_W = numeric(d + 1)
+  F_W[1] = gamma_vec[1]
+  
+  for(i in (1:d)){
+    F_W[i+1] = (1 - i/d)*gamma_vec[i+1] * 2*cos(lambda*i)
+  }
+  
+  return(sum(F_W))
+}
+
+
+Trapezoid_Taper <- function(gamma_vec, lambda, proportion, d){
+  # gamma_vec is a length n vector of autocovariances
+  # lambda is a real-values frequency
+  # c is a real number in (0 ,1]
+  # d is an integer representing the number of autocovariances we wish to include in the taper
+  
+  F_W = numeric(d)
+  c = proportion*d
+  
+  for (i in (1:c)){
+    F_W[i] = gamma_vec[i] * 2 * cos(lambda*(i-1))
+  }
+  for(i in ((c+1):d)){
+    F_W[i] = (1 - (i-c)/(d-c)) * gamma_vec[i] * 2*cos(lambda*(i-1))
+  }
+  return(sum(F_W))
+}
+
+
+# truncated_periodogram() differs from the regular periodogram() function because it does not use all the 
+# sample autocovariances in its calculations, just 50 of them
+truncated_periodogram = function(gamma_vec){
+  
+  n = 200
+  L = seq(-pi, pi, length.out = n) 
+  
+  f_model = numeric(n)
+  
+  for (i in (1:n)){
+    sum_L_k = gamma_vec[1]
+    
+    for(k in (2:n)){
+      sum_L_k = sum_L_k + gamma_vec[k]*2*cos(k * L[i])
+    }
+    f_model[i] = sum_L_k
+  }
+  return(f_model)
+}
+
+
+W = read.table("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\HW 1\\wolfer.dat")
+wolfer_dat = W$V1
+
+n = length(wolfer_dat)
+
+ACVF_estimate_wolfer = sample_acvf(wolfer_dat)
+
+wolfer_acf = acf(wolfer_dat, lag.max = n-1, type = "covariance")
+lines(ACVF_estimate_wolfer, col = 'red')
+# these plots are nearly superimposed
+
+# m is the precision of our SPD estimate: essentially, how many pieces we break our [-pi, pi] domain into
+
+lambda_wolfer = seq(-pi, pi, length.out = n)
+
+constant = c(1, 2, 4, 6)
+d = constant * floor(n^(1/3))
+colors = c('red', 'blue', 'green')
+
+# from here on out, when I use the notation "d = value" this means that d was derived from a constant
+# here we plot three Bartlett-tapered spectral density estimates
+# d = 1
+bartlett_wolfer_periodogram = numeric(n)
+for( l in (1:n)){
+  bartlett_wolfer_periodogram[l] = tapered_spectral_estimator(ACVF_estimate_wolfer, lambda_wolfer[l], d[1])
+}
+plot(lambda_wolfer, bartlett_wolfer_periodogram, type = 'l')
+
+# d = 2
+bartlett_wolfer_periodogram = numeric(n)
+for( l in (1:n)){
+  bartlett_wolfer_periodogram[l] = tapered_spectral_estimator(ACVF_estimate_wolfer, lambda_wolfer[l], d[2])
+}
+lines(lambda_wolfer, bartlett_wolfer_periodogram, col = colors[1])
+
+#d = 4
+bartlett_wolfer_periodogram = numeric(n)
+for( l in (1:n)){
+  bartlett_wolfer_periodogram[l] = tapered_spectral_estimator(ACVF_estimate_wolfer, lambda_wolfer[l], d[3])
+}
+lines(lambda_wolfer, bartlett_wolfer_periodogram, col = colors[2])
+
+
+# d = 6
+bartlett_wolfer_periodogram = numeric(n)
+for( l in (1:n)){
+  bartlett_wolfer_periodogram[l] = tapered_spectral_estimator(ACVF_estimate_wolfer, lambda_wolfer[l], d[4])
+}
+lines(lambda_wolfer, bartlett_wolfer_periodogram, col = colors[3])
+
+# with these plots, we see that the SPD of the Wolfer data is highly concentrated near the origin.
+# As the constant modifying d increases, we see the concentration near the origin and the presence of local
+# feautures increase at greater frequency values
+
+
+regular_wolfer_periodogram = periodogram(ACVF_estimate_wolfer)
+
+lambda_1 = seq(-pi,pi, length.out = n)
+plot(lambda_1, regular_wolfer_periodogram, type = 'l')
+
+# if we zoom in on the 200 elements nearest the origin
+lambda = seq(-100, 100, length.out = 201)
+plot( lambda, regular_wolfer_periodogram[(n/2-100): (n/2+100) ], type = 'l')
+# we see a far more complicated periodogram with more peaks to consider than are accounted for by our tapered
+# estimates, which shove all these local features into a single peak near the origin
+
+# both the periodogram and the tapered periodogram are resulting in highly condensed graphs with value only in the 
+# immediate vicinity of zero
+
+# my code for the periodogram and tapered versions seems quite equitable with the information in the textbook, and 
+# reasonably consistent with the true value of the SPD (when coefficients are available).
+# The output of these figures, however, is quite strange. The periodogram centering at zero might simply mean that 
+# only gamma(0) and gamma(k) for k near zero are impactful to the periodogram
+
+
+
+
+c = 0.5
+constant = c(2, 4, 6)
+d = constant * floor(n^(1/3))
+
+
+# d = 2
+trapezodial_wolfer_periodogram = numeric(n)
+for( l in (1:n)){
+  trapezodial_wolfer_periodogram[l] = Trapezoid_Taper(ACVF_estimate_wolfer, lambda_wolfer[l], c, d[1])
+}
+
+plot(lambda_wolfer, trapezodial_wolfer_periodogram, col = 'purple', type = 'l')
+
+
+# d = 4
+trapezodial_wolfer_periodogram = numeric(n)
+for( l in (1:n)){
+  trapezodial_wolfer_periodogram[l] = Trapezoid_Taper(ACVF_estimate_wolfer, lambda_wolfer[l], c, d[2])
+}
+
+plot(lambda_wolfer, trapezodial_wolfer_periodogram, col = 'purple', type = 'l')
+
+
+
+# d = 6
+trapezodial_wolfer_periodogram = numeric(n)
+for( l in (1:n)){
+  trapezodial_wolfer_periodogram[l] = Trapezoid_Taper(ACVF_estimate_wolfer, lambda_wolfer[l], c, d[3])
+}
+
+plot(lambda_wolfer, trapezodial_wolfer_periodogram, col = 'purple', type = 'l')
+lines(lambda_wolfer, regular_wolfer_periodogram)
+# we see that the superimposition of the periodogram on to the smoothed taper is fairly accurate. 
+
+plot(lambda_wolfer, trapezodial_wolfer_periodogram, col = 'purple', type = 'l')
+
+# for a high enough value of d, with c = 0.5, we see the double peak in the plot when using the trapazodial
+# taper model. It requires that more autocovariance estimates be taken into account with full weight.
+# This indicates that observations are likely influenced by prior data at large lag steps since:
+
+# d = 84 with c = 0.5 --> taper begins at 42, thus up to a lag of 42, we might have autocovariance significant
+# to the nature of the SPD. 
+
+
+
+
+
+# let's make c = 0.25 and see what happens
+
+c = 0.25
+
+# d does not need to change, so the code looks identical to the above trials
+
+
+# d = 2
+trapezodial_wolfer_periodogram = numeric(n)
+for( l in (1:n)){
+  trapezodial_wolfer_periodogram[l] = Trapezoid_Taper(ACVF_estimate_wolfer, lambda_wolfer[l], c, d[1])
+}
+
+plot(lambda_wolfer, trapezodial_wolfer_periodogram, col = 'purple', type = 'l')
+
+
+# d = 4
+trapezodial_wolfer_periodogram = numeric(n)
+for( l in (1:n)){
+  trapezodial_wolfer_periodogram[l] = Trapezoid_Taper(ACVF_estimate_wolfer, lambda_wolfer[l], c, d[2])
+}
+
+plot(lambda_wolfer, trapezodial_wolfer_periodogram, col = 'purple', type = 'l')
+
+
+
+# d = 6
+trapezodial_wolfer_periodogram = numeric(n)
+for( l in (1:n)){
+  trapezodial_wolfer_periodogram[l] = Trapezoid_Taper(ACVF_estimate_wolfer, lambda_wolfer[l], c, d[3])
+}
+
+plot(lambda_wolfer, trapezodial_wolfer_periodogram, col = 'purple', type = 'l')
+
+# In-line with earlier observations, lower c decreases the magnitude of peaks and troughs. We see in the last
+# plot that the twin-peaks are visible just as in the c = 0.5 condition.
+# This means that it is likely the value of d, not the value of c, which is more important to the observation
+# of this feature of the SPD. 
+
+# This further suggests that it is because more values of the ACVF were not zeroed due to higher 
+# d value that we see this feature, and NOT that critical ACVF values were weighted differently due to 
+# c being large.
+
+
+
+
+
+
+
+## Exercise G
+# we want to fit an AR(p) model to the Wolfer Sunspot data
+W = read.table("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\HW 1\\wolfer.dat")
+wolfer_dat = W$V1
+
+n = length(wolfer_dat)
+mu_w = mean(wolfer_dat)
+
+ACVF_estimate_wolfer = numeric(n)
+
+for(i in (1:n)){
+  
+  t = n - i + 1
+  # [1:t] represents the changing index of the sample X_t, while [i:n] represents the index of X_t+k
+  # recall that n is the size of our sample
+  
+  ACVF_estimate_wolfer[i] = (1/n) * sum((wolfer_dat[1:t] - mu_w) * (wolfer_dat[i:n] - mu_w))
+}
+wolfer_acf = acf(wolfer_dat, lag.max = n-1, type = "covariance")
+lines(ACVF_estimate_wolfer, col = 'red')
+
+
+# (i): to identify the order p of the appropriate AR, we use the following empirical rule:
+# let p_hat be the smallest positive integer such that:
+# abs(kappa_hat(p_hat + k)) < (c * sqrt( 1/n * log10(n)))
+
+# to use this rule, we must create an appropriate kappa_hat to compare to the threshold
+# we will evaluate kappa_hat at all lags n and compare the function to the threshold
+
+# equation 10.3.1 informs us that kappa_hat(k) = e_k' %*% Gamma_hat_k^-1 %*% gamma_hat_k
+# gamma_hat_k = ACVF_estimate_wolfer[1:k]
+
+
+PACF_estimate = pacf(wolfer_dat, lag.max = n, plot = FALSE)
+pacf_wolfer = PACF_estimate$acf
+
+
+
+# kappa_hat is the PACF
+
+c = 1.96
+threshold = c * sqrt( 1/n * log10(n))
+K_n = 1 + floor(3* sqrt(log10(n)))
+
+m = 100
+index = 0
+
+for( i in 1:m){
+  if(abs(pacf_wolfer[i]) > threshold ){
+    temp = i
+    
+    if(temp - index > K_n){
+      break
+      
+    }else{
+      index = i
+    }
+  }
+}
+index
+# This value of index indicates the PACF value above the threshold. We would like to calculate the first value BELOW the threshold,
+# thus we should consider an AR(5)
+
+
+ts.plot(ts(pacf_wolfer[1:m]))
+abline(h = threshold, col = 'red')
+abline(h = -threshold, col = 'red')
+
+
+# We see that the deviation at lag = 18  is greater than K_n ~ 6  indices away from the dip below threshold that occurs at q = 5.
+# Since the PACF does not exceed a magnitude of the threshold for at least K_n autocorrelations away from index_2, we should use 
+# index_2 as the degree of our AR model.
+# An AR(5) is an appropriate model of the Wolfer Sunspot data
+
+
+
+
+
+
+#(ii)
+#Use the R function ar (choose option Yule-Walker) to fit AR(r) models to the data for r=1,..., 12. 
+#For each r, record the estimated variance of the white noise driving the AR model; denote it by sigma^2_r.
+
+yw_estimate = ar(wolfer_dat, method = "yule-walker")
+# this estimate suggests an AR(28) as the optimal linear model for the Wolfer data. 
+
+sigma_r_vec = numeric(12)
+
+for( i in (1:12)){
+  model = ar(wolfer_dat, order.max = i, method = "yule-walker", AIC = FALSE)
+  sigma_r_vec[i] = model$var.pred
+}
+sigma_r_vec
+
+
+#(iii)
+# For each r, compute the AIC = n log (sigma^2_r) + 2r 
+
+AIC_vec = numeric(12)
+
+for (i in 1:12){
+  AIC_vec[i] = n*log(sigma_r_vec[i]) + 2*i
+}
+
+AIC_vec
+min(AIC_vec)
+
+# This shows that an AR(12) is the best model for the Wolfer data
+
+
+#(iv)
+# Plot AIC as a function of r=1,..., 12. Find the r that minimizes the AIC. Is this different from your answer to part (i)?
+degree = c(1:12)
+
+plot(degree, AIC_vec, type = 'l')
+
+abline(h = min(AIC_vec), col = 'red')
+
+# The min line intersects at r = 12
+
+
+
+
+
+
+
+
+
+
+
+## Exercise H
+# (i) use the function arma() to fit all ARMA(p,q) models for p,q <= 2 to the Wolfer sunspots data. Create a table
+# that shows the estimated variance of the white noise driving the ARMA model for all p and q combinations
+library(tseries)
+
+n = length(wolfer_dat)
+
+Wn_var = matrix(nrow = 3, ncol = 3,)
+
+p = c(0, 1, 2)
+q = c(0, 1, 2)
+
+for(i in p){
+  for(j in q){
+    
+    temp_arma = arma(wolfer_dat, order = c(i,j))
+    
+    Wn_var[i+1,j+1] = var(temp_arma$residuals, na.rm = TRUE)
+  }
+}
+# throws error for order = c(0,0)
+
+Wn_var
+
+
+# (ii) choose the best model using AIC
+# For large samples, profile likelihood L(w, sig^2) can be calculated by:
+#   n*log(2*pi) + n + n*log(sig^2),       we drop the logdet(gamma_n) for suficciently large N due to its end behavior
+# the value that minimizes AIC will also minimize         n*log(sigma^2) + 2r
+
+for(i in (1:3)){
+  for(j in (1:3)){
+    Wn_var[i, j]  = n*(log(Wn_var[i,j])) + 2*((i-1 + j -1))
+  }
+}
+Wn_var
+
+# we have just transformed our variance vector into the AIC vector.
+# entry [2,3] has the lowest AIC, thus an ARMA(1, 2) is best suited to describe the Wolfer Sunspot data
+
+
+
+
+
+
+
+
+# Ex. 10.6
+# Use the logged growth rate of the West Starts series. Apply the MA identification technique of 10.1.4
+# to identify the order of the MA
+data = read.table("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\HW 1\\Wstarts.b1", skip = 2)
+length(data$V2)
+
+w_starts = log(data$V2)
+n = length(w_starts)
+
+differenced_w_starts = numeric(n)
+differenced_w_starts[1] = 0
+
+for (i in (2:n)){
+  differenced_w_starts[i] = w_starts[i] - w_starts[i-1]
+}
+
+Time = c(1:n)
+plot(Time, differenced_w_starts, type = 'l', ylab = "West Starts Log DIfference")
+
+
+mu_starts = mean(differenced_w_starts)
+
+ACF_estimates_w_starts = numeric(n)
+for(i in (1:n)){
+  
+  t = n - i + 1
+  # [1:t] represents the changing index of the sample X_t, while [i:n] represents the index of X_t+k
+  # recall that n is the size of our sample
+  
+  ACF_estimates_w_starts[i] = (1/n) * sum((differenced_w_starts[1:t] - mu_starts) * (differenced_w_starts[i:n] - mu_starts))
+}
+
+acf(differenced_w_starts, lag.max = n-1, type = "covariance")
+lines(ACF_estimates_w_starts, col = "red")
+
+ts.plot(ts(ACF_estimates_w_starts))
+
+
+# the empirical rule of 10.1.4 states: 
+# let q_hat be the smallest positive integer s.t. 
+#   abs(correlation(q_hat + k))  <  c * sqrt((1/n) * log_base10(n))
+# for all k = 1 --> K_n    with K_n = o(log(n))
+
+c = 1.96
+K_n = 1 + floor(3*sqrt(log10(n)))
+# K_n ~ 5,  thus we should repeat threshold tests every 6 entries
+
+threshold = c * sqrt((1/n) * log10(n))
+
+
+
+
+
+ACF_correlation_estimates = ACF_estimates_w_starts/ACF_estimates_w_starts[1]
+index = 0
+for( i in 1:n){
+  if(abs(ACF_correlation_estimates[i]) > threshold ){
+    temp = i
+    
+    if(temp - index > K_n){
+      break
+      
+    }else{
+      index = i
+    }
+  }
+}
+index
+
+# the Empirical rule indicates that the MA model is of lag 110
+
+# the index of the Empirical rule trial, dependent on K_n, does not seem totally harmonious with the plot of the ACF estimates
+# if we plot
+acf(differenced_w_starts, lag.max = n, type = "correlation")
+# the plot of the acf function indicates that we have correlation for lags near 400
+
+# we can draw new lines for our threshold
+abline(h = threshold, col = 'red')
+abline(h = -threshold, col = 'red')
+# these lines show that the index of 110 may not be reasonable
+
+
+# If we instead calulate index_2, which does not care about the distance between excursions past the threshold being K_n apart
+# we find that a much larger degree is suggested for an MA model. 
+
+index_2 = 0
+for( i in 1:n){
+  if(abs(ACF_correlation_estimates[i]) > threshold ){
+    index_2 = i
+  }
+}
+index_2
+
+# 361 for an MA degree is fairly massive, but it looks more correct given the plot.
+# let's look at a zoomed-in portion of the autocorrelation graph with threshold markings
+
+Lag = c(1:n)
+plot(Lag[70:130], ACF_correlation_estimates[70:130], type = 'l')
+abline(h = threshold, col = 'red')
+abline(h = -threshold, col = 'red')
+# indeed, we see that the peaks of the autocorrelation function are not significantly further from one another as lag increases.
+# Let me remind the reader of the threshold value
+threshold
+# and now compare this to the next 20 elements of the ACF 
+ACF_correlation_estimates[110:130]
+
+# K_n is less than 6, and we see that the 6th value after index 110 diverges from the threshold, as well as values 117, 120, 121, and 122.
+# However, the empirical rule tells us that an MA(110) will represent the data best
+
+
+
+
+
+
+
+
+
+# 11.12
+#Simulate 500 observations of an ARCH(1) using Gaussian inputs, as well as Student t inputs with 
+# degrees of freedom equal to 5 and 3
+
+DoF_1 = 3
+DoF_2 = 5
+a_0 = 0.5
+a_1 = 0.2
+n = 500
+
+
+z_sample = rnorm(n)
+normal_sample = numeric(n)
+normal_sample[1] = z_sample[1]*a_0
+for(i in (2:n)){
+  normal_sample[i] = sqrt(a_0 + a_1 * normal_sample[i-1]^2) * z_sample[i]
+}
+plot(c(1:n), normal_sample, type = 'l')
+
+
+t_sample_1 = rt(n, DoF_1)
+student_T_sample_1 = numeric(n)
+student_T_sample_1[1] = t_sample_1[1]*a_0
+for(i in (2:n)){
+  student_T_sample_1[i] = sqrt(a_0 + a_1 * student_T_sample_1[i-1]^2) * t_sample_1[i]
+}
+plot(c(1:n), student_T_sample_1, type = 'l')
+
+
+t_sample_2 = rt(n, DoF_2)
+student_T_sample_2 = numeric(n)
+student_T_sample_2[1] = t_sample_2[1]*a_0
+for(i in (2:n)){
+  student_T_sample_2[i] = sqrt(a_0 + a_1 * student_T_sample_2[i-1]^2) * t_sample_2[i]
+}
+plot(c(1:n), student_T_sample_2, type = 'l')
+
+
+
+
+
+
+
+
+
+# 11.19
+# Estimate an ARCH(p) model via least squares regression of(X_t)^2 on the squares of (p) prior observations
+# and a constant. Test the function by applying it to the data created in 11.12
+
+# since all the white noise inputs to the ARCH data we have created so far, The expectation of X_t given infinte prior data can be 
+# modeled by a linear combination of p prior observations.
+
+# it is very easy to make this estimate for an ARCH(1), but I have opted to write code that should work to provide a linear estimate
+# of all coefficients of an ARCH(p)
+
+
+p = 1
+x = normal_sample
+
+X_p_matrix = matrix((x[(p+1):n])^2, ncol = 1)
+
+
+for(i in (1:p)){
+  
+  X_p_matrix = cbind(X_p_matrix, (x[(p-i+1):(n-i)])^2)
+}
+
+# to make an estimator for an ARCH(p), we will need to use some very clever formula fitting.
+# the only way I could think to get the linear model formula was with a properly constructed string to be passed in to the lm() function. 
+
+outcome = "X_p"
+variables = c(1:p)
+
+
+for(j in (1:(p))){
+  variables[j] = paste("X", variables[j], sep = "_" )
+}
+
+names = c(outcome, variables)
+colnames(X_p_matrix) = names
+
+X_p_df = data.frame(X_p_matrix) 
+
+# for p > 1, f returns a formula with p+1 elements.
+f = as.formula(paste(outcome, paste(variables, collapse = " + "), sep = " ~ "))
+f
+
+ARCH_model = lm(f, data = X_p_df)
+ARCH_model
+
+# the ARCH linear model is rather variant in its estimation of the coefficient of X_1, but the consistency of the estimate for 
+# the constant term indicates that the estimation process is proceeding as expected.
+
+# Thus, the variance of the input is likely to blame for deviant X_1 coefficient estimates
+
+
+
+# We want 
+# now, let:
+x = t_sample_1
+X_p_matrix = matrix((x[(p+1):n])^2, ncol = 1)
+
+
+for(i in (1:p)){
+  
+  X_p_matrix = cbind(X_p_matrix, (x[(p-i+1):(n-i)])^2)
+}
+
+
+
+outcome = "X_p"
+variables = c(1:p)
+
+
+for(j in (1:(p))){
+  variables[j] = paste("X", variables[j], sep = "_" )
+}
+
+names = c(outcome, variables)
+colnames(X_p_matrix) = names
+
+X_p_df = data.frame(X_p_matrix) 
+
+f = as.formula(paste(outcome, paste(variables, collapse = " + "), sep = " ~ "))
+f
+
+ARCH_model = lm(f, data = X_p_df)
+ARCH_model
+
+# This estimate for the ARCH coefficients is massively far from the true values, and indicates the non-linearity of the ARCH
+# model is powerful, even at low degrees
+
+
+
+
+# now, let:
+x = t_sample_2
+X_p_matrix = matrix((x[(p+1):n])^2, ncol = 1)
+
+
+for(i in (1:p)){
+  
+  X_p_matrix = cbind(X_p_matrix, (x[(p-i+1):(n-i)])^2)
+}
+
+
+
+outcome = "X_p"
+variables = c(1:p)
+
+
+for(j in (1:(p))){
+  variables[j] = paste("X", variables[j], sep = "_" )
+}
+
+names = c(outcome, variables)
+colnames(X_p_matrix) = names
+
+X_p_df = data.frame(X_p_matrix) 
+
+f = as.formula(paste(outcome, paste(variables, collapse = " + "), sep = " ~ "))
+f
+
+ARCH_model = lm(f, data = X_p_df)
+ARCH_model
+
+
+
+
+
+
+
+# 11.21
+# Simulate 500 observations of a GARCH(1, 1) process with 
+A_0 = 0.5
+A_1 = 0.2
+B_1 = 0.4
+n = 500
+
+# initialize the volatility with zeroes, and use a proper burn-in. 
+# Use Gaussian inputs as well as Student t inputs with the same degrees of freedom as 11.12
+DoF_1
+DoF_2
+
+
+# We must store the sigma and X values in each iteration
+z_sample_2 = rnorm(n + 100)
+X_t_vector = numeric(n + 100)
+sigma_t_vector = numeric(n + 100)
+
+# the first hundered trials are a burn-in period, initialized with zero values for sigma_1 and X_1
+for(i in (2:100)){
+  sigma_t_vector[i] = A_0 + A_1*X_t_vector[i-1] + B_1*sigma_t_vector[i-1]
+  X_t_vector[i] = sqrt(abs(sigma_t_vector[i])) * z_sample_2[i]
+}
+ts.plot(ts(X_t_vector[1:100]))
+
+# the next 500 trials should be real data from a GARCH(1,1)
+for(i in (101:(n + 100))){
+  sigma_t_vector[i] = A_0 + A_1*X_t_vector[i-1] + B_1*sigma_t_vector[i-1]
+  X_t_vector[i] = sqrt(abs(sigma_t_vector[i])) * z_sample_2[i]
+}
+
+ts.plot(ts(X_t_vector[101:(n+100)]))
+# the plot shows that our data is sufficiently centered around zero and looks appropriately random.
+
+
+
+# now we write identical code for the Student T distributions of different DoF values
+
+
+
+# DoF = 3
+# We must store the sigma and X values in each iteration
+t_sample_1.2 = rt( n + 100, 3)
+X_t_vector_t_1 = numeric(n + 100)
+sigma_t_vector_t_1 = numeric(n + 100)
+
+# the first hundered trials are a burn-in period, initialized with zero values for sigma_1 and X_1
+for(i in (2:100)){
+  sigma_t_vector_t_1[i] = A_0 + A_1*X_t_vector_t_1[i-1] + B_1*sigma_t_vector_t_1[i-1]
+  X_t_vector_t_1[i] = sqrt(abs(sigma_t_vector_t_1[i])) * t_sample_1.2[i]
+}
+ts.plot(ts(X_t_vector_t_1[1:100]), ylab = 'T distribution, DoF = 3')
+
+# the next 500 trials should be real data from a GARCH(1,1)
+for(i in (101:(n + 100))){
+  sigma_t_vector_t_1[i] = A_0 + A_1*X_t_vector_t_1[i-1] + B_1*sigma_t_vector_t_1[i-1]
+  X_t_vector_t_1[i] = sqrt(abs(sigma_t_vector_t_1[i])) * t_sample_1.2[i]
+}
+
+ts.plot(ts(X_t_vector_t_1[101:(n+100)]), ylab = 'T distribution, DoF = 3')
+# the plot shows that our data is sufficiently centered around zero and looks appropriately random. The variance is larger than the
+# GARCH data drawn from the Gaussian sample, but this is expected.
+# using the T distribution resulted in some values of sigma_t that were negative and forced me to include an abs() statement in the 
+# calculation of X_t.
+
+
+
+
+# Now we solve for DoF = 5
+# We must store the sigma and X values in each iteration
+t_sample_2.2 = rt( n + 100, 5)
+X_t_vector_t_2 = numeric(n + 100)
+sigma_t_vector_t_2 = numeric(n + 100)
+
+# the first hundered trials are a burn-in period, initialized with zero values for sigma_1 and X_1
+for(i in (2:100)){
+  sigma_t_vector_t_2[i] = A_0 + A_1*X_t_vector_t_2[i-1] + B_1*sigma_t_vector_t_2[i-1]
+  X_t_vector_t_2[i] = sqrt(abs(sigma_t_vector_t_2[i])) * t_sample_2.2[i]
+}
+ts.plot(ts(X_t_vector_t_2[1:100]), ylab = 'T distribution, DoF = 5')
+
+# the next 500 trials should be real data from a GARCH(1,1)
+for(i in (101:(n + 100))){
+  sigma_t_vector_t_2[i] = A_0 + A_1*X_t_vector_t_2[i-1] + B_1*sigma_t_vector_t_2[i-1]
+  X_t_vector_t_2[i] = sqrt(abs(sigma_t_vector_t_2[i])) * t_sample_2.2[i]
+}
+
+ts.plot(ts(X_t_vector_t_2[101:(n+100)]), ylab = 'T distribution, DoF = 5')
+# the plot shows that our data is sufficiently centered around zero and looks appropriately random.
+
+
+
+
+
+
+
+
+# Exercise K -- let X_t denote the Wolfer sunspots data. Denote mu = E[X_t], and f_w the spectral density at point w
+#(i)
+# Estimate f(w) using the best fitted AR model from exercise G
+
+# My exercise G reported that an AR(12) is the best model to use, so it will be the one I perform calculations with. 
+data = read.table("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\HW 1\\wolfer.dat")
+X_t = data$V1
+X_bar = mean(X_t)
+n = length(X_t)
+
+AR_12_model = ar(X_t, order.max = 12, method = "yule-walker")
+coefficients = AR_12_model$ar
+sigma_AR_5 = AR_12_model$var.pred
+
+# this function should calculate    residual_variance / 2*lambda * transfer_fuction_of_AR_model
+sp_dense_K = function(lambda, coefficients, sigma, degree){
+ temp = numeric(degree)
+ 
+ for( i in (1:degree)){
+   temp[i] = coefficients[i]*2*cos( lambda)
+ }
+ return(abs(sum(temp)) * sigma/(2* i *lambda))
+}
+
+lambda_vec_1 = seq(0, pi, length.out = 200)
+
+F_w = numeric(200)
+for(i in (1:200)){
+  F_w[i] = sp_dense_K(lambda_vec_1[i], coefficients, sigma_AR_5, 12)
+}
+
+
+plot(lambda_vec_1, F_w, type = 'l')
+
+# this is not the plot of spectral density as a function of frequency I was expecting. There is little fluctuation and indicates that
+# only a zero or near zero frequency contribute to the spectral density. I am not sure if this comes from errors in the spectral 
+# density calculation? perhaps an improperly implemented equation for spectral density.
+
+# below is a Bartlett tapered estimate of the periodogram given an AR(12) model
+
+# we can make the lag.max value however large we like. However, since we are supposing an AR(12), let's assume that all CVF beyond
+# a lag of 12 are equal to zero.
+acvf_wolfer = acf(X_t, lag.max = 12, type = 'covariance', plot = FALSE)
+g12w = acvf_wolfer$acf
+
+
+lambda_vec = seq(-pi, pi, length.out = 200)
+F_k_estimate = numeric(200)
+for(i in (1:200)){
+  F_k_estimate[i] = tapered_spectral_estimator(g12w, lambda_vec[i], 12)
+}
+plot(lambda_vec, F_k_estimate, type = 'l')
+
+# this looks like a reasonable periodogram, and aligns fairly well with the spectral density calculation in terms of how quickly it
+# approaches an asymptote at zero.
+
+
+#(ii)
+# Use the above, together with a CLT for the sample mean, to write down a 95% confidence interval for mu.
+
+# we know that AR(p) models are stictly stationary with p-dependence, so we can use Theorem 9.2.3 to provide a CI for the 
+# value of the true mean mu given the sample mean X_bar, sample size n, and long-run variance sigma_inf
+
+# First, we must calculate the long-run variance from the ACVF. The variance should be the sum of all autocovariances
+# for an AR(12), only the first 12 autocovariances should be non-zero. We calculate that estimate here
+sigma_m_12 = sum(g12w)
+sigma_m_12
+
+# I will compare the result of an AR(12) model to an CI constructed without model restrictions.
+# the next line calculates the ACVF for all lags up to the sample size.
+acvf_wolfer_2 = acf(wolfer_dat, lag.max = n, type = 'covariance', plot = FALSE)
+gnw = acvf_wolfer_2$acf
+# 9.2.1 --> the long-run variance of X_t is equal to the sum of ACVF functions
+sigma_m_n = sum(gnw)
+sigma_m_n
+# we see that using all ACF values to lag n results in a much lower variance: less by a factor of 20!
+
+# Theorem 9.3.2 informs us that sqrt(n)*(X_bar - mu) ~ N(0, sigma_inf)
+# using sigma_m_12 as the estimate for long run variance, the 95% quantile for sqrt(n)*(X_bar - mu) is (+ or -) 40414.72
+# Thus we see that the 95% CI for mu is given by:
+
+#  X_bar - 40414.72/sqrt(n) <   mu   <   X_bar + 40414.72/sqrt(n)
+X_bar - 1.96*sigma_m_12/sqrt(n)
+X_bar + 1.96*sigma_m_12/sqrt(n)
+
+#   P[ -709.7872 < mu < 812.3139 ] >= 95%
+
+
+# if we try the same using sigma_m_n,
+X_bar - 1.96*sigma_m_n/sqrt(n)
+X_bar + 1.96*sigma_m_n/sqrt(n)
+
+#   P[ 16.4397 < mu < 86.1 ] >= 95%
+
+# since X_bar ~ 51.3,  both of our CIs seem properly centered and contain the sample mean. However, the CI derived from an AR(12) is 
+# far less accurate than the one derived from an AR(infinity)
+
+
+#(iii)
+# Let Y_t = log (X_t + 1). Use the R function ar.yw (with aic = TRUE) to fit an AR model to the Y_t data. 
+# Does the chosen AR order for Y_t coincide with that of X_t (as done in Exercice G)?
+
+Y_t = log(X_t + 1)
+
+y_model = ar.yw(Y_t, aic = TRUE)
+y_model
+
+# This function reccommends an AR(24) as the best fit. This is not even close to the AR(12) model we predicted in G, 
+# but our degree was limited to p = 12.
+# The AR estimation of X_t with the Yule-Walker equations and no degree limit was an AR(28),
+# similar but not the same as the model for the logged data.
+
+
+
+
+#(iv)
+# What is the (nonlinear) model for X_t that is implied by the fitted AR model to the Y_t data?
+
+
+# Let ak represent the coefficient of Y_t-k       Y_t being expressed by an AR(24) indicates that:
+
+#         Y_t = a1*Y_t-1  +  a2*Y_t-2 + .... + a24*Y_t-24 = log(X_t + 1)
+
+# -->     X_t = exp(Y_t) - 1  =  exp(a1*Y_t-1 + a2*Y_t-2 + ... + a24*Y_t-24) - 1
+
+# note that all prior Y_t-k values are expressible as log(X_t-k + 1)
+
+# -->    X_t = exp(a1*(log(X_t-1 + 1) + a2*log....  + a24*log(X_t-24 + 1))) - 1
+
+# Thus, the log of this nonlinear expression for X_t has an AR solution with lesser degree than the AR solution to X_t itself.
