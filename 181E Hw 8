@@ -1,0 +1,155 @@
+#5.38
+# using the process of ex 5.35, write a program to generate the coefficients for general phi_1, theta_1, theta_2. 
+#Evaluate with:
+# phi_1 = 1/2
+# theta_1 = 5/6
+# theta_2 = 1/6
+# and plot the result against the coefficient index. Note how quickly the sequence tends towards zero.
+# increase Phi_1 towards unity, what does this do the the coefficient sequence?
+
+MA_inf_coef <- function(phi_1, th_1, th_2, num){
+# this code is only supposed to work for ARMA(1, 2), so we only need the three inputs
+  
+  psi_1 = th_1 + phi_1
+  psi_2 = th_2 + phi_1*psi_1
+  psi_inf = c(1)
+  psi_inf = append(psi_inf, c(psi_1, psi_2))
+  
+  for(i in (3:num)){
+    psi_i = phi_1^(i-2)*psi_2
+    psi_inf = append(psi_inf, psi_i)
+  }
+
+  ts.plot(ts(psi_inf))
+}
+
+
+MA_inf_coef(1/2, 5/6, 1/6, 20)
+MA_inf_coef(3/4, 5/6, 1/6, 20)
+MA_inf_coef(11/12, 5/6, 1/6, 20)
+MA_inf_coef(99/100, 5/6, 1/6, 100)
+# increasing the AR coefficient near unity causes the psi coefficient to fluxuate as it trends towards zero. 
+# This makes the descent towards zero quite a bit slower the closer the coefficient is to 1
+
+
+# Exercise B
+#(i) Code the formula for gamma (h) given in ex. 39 for the ARMA(1,2) model, i.e., create an R function that takes 
+#as inputs the values of the three ARMA coefficients, the white noise variance sigma^2, and the maximum lag (say r) 
+#for which you want to calculate gamma (h), and gives as output the list gamma (0), gamma (1), ... , gamma (r).
+
+#(ii) Note that the R function ARMAacf() computes autocorrelations, not autocovariances. How can you use the 
+# autocorrelations that ARMAacf computes to derive the autocovariances (so as to compare to part (i) above)?
+
+#(iii) Compare your results from part (i) with the output of ARMAacf. For the comparison, you'd need to specify 
+# some input values, e.g. you may use AR=1/2 and MA=c(5/6, 1/6) and sigma^2=4.
+
+gamma_r <- function(phi_1, th_1, th_2, var, r){
+  
+  psi_1 = th_1 + phi_1
+  psi_2 = th_2 + phi_1*psi_1
+  
+  gamma_0 = (1 + (th_1 +phi_1)^2 + ((th_2 + phi_1^2 + th_1*phi_1)^2)/(1 - (phi_1^2))) * var^2
+  gamma_1 = (psi_1 + psi_1*psi_2 + (phi_1 * psi_2^2)/(1 - (phi_1^2))) * var^2
+  gamma_list = c(gamma_0)
+  
+  if( r > 0){
+    gamma_list = append(gamma_list, gamma_1)
+  
+    for(i in (2:r)){
+    
+      psi_i = phi_1^(i-2)*psi_2
+      psi_i_plus_1 = phi_1^(i-1)*psi_2
+    
+      gamma_i = (psi_i + psi_1*psi_i_plus_1 + (phi_1^i * psi_2^2)/(1 - (phi_1^2))) * var^2
+      gamma_list = append(gamma_list, gamma_i)
+    }
+  }
+  return(gamma_list)
+}
+
+# (ii) 
+# rho(x) = gamma(x)/gamma(0)
+# we can retrieve the autocovariances from the autocorelations if we know gamma(0)
+# by either multiplying the autocorrelations by gamma(0), or dividing the autocovariances
+# by gamma(0)
+
+# (iii)
+# to check the accuracy of our created function, we can divide the output of gamma_r 
+# by the gamma_0 used in the code. If we declare our variables as they would be used 
+# in the function, we can directly copy the equation of gamma_0 outside the function.
+
+phi_1 = 1/2
+th_1 = 5/6
+th_2 = 1/6
+var = 2
+num = 10
+psi_1 = phi_1 + th_1
+psi_2 = th_2 + phi_1*psi_1
+
+gamma_0 = (1 + psi_1^2 + psi_2^2/(1 - phi_1^2)) * var^2
+
+# if our function is correct, divding its output by gamma_0 should be identical to the output
+# of this function below.
+
+vect = ARMAacf(ar = c(1/2), ma = c(5/6, 1/6), lag.max = 10)
+
+acvf = gamma_r(phi_1, th_1, th_2, var, 10)
+
+vect 
+acvf/gamma_0
+
+vect * gamma_0
+acvf
+
+# indeed, both the correlation function and the covariance function produce the same results.
+# this confirms that our method of covariance solution is valid.
+
+
+
+## 5.44
+# code for 5.40
+gamma_k <- function(phi_1, th_1, th_2, var, num){
+  
+  psi_1 = phi_1 + th_1
+  psi_2 = th_2 + phi_1*psi_1
+  
+  gamma_0 = var^2 * (phi_1*(th_1 + th_2*(psi_1))+ (1 + th_1*psi_1 + th_2*psi_2))/(1-phi_1^2)
+  gamma_1 = (var^2 * (th_1 + th_2 * psi_1)) + phi_1*gamma_0
+  gamma_2 = (var^2 * th_2) + phi_1*gamma_1
+  
+  gamma_list = c(gamma_0)
+  
+  if(num > 1){
+    gamma_list = append(gamma_list, gamma_1)
+  }
+  if(num > 2){
+    gamma_list = append(gamma_list, gamma_2)
+    
+    for( i in (3:num)){
+      gamma_i = phi_1^(i-2) * gamma_2
+      
+      gamma_list = append(gamma_list, gamma_i)
+    }
+  }
+  return(gamma_list)
+}
+
+# We will test the code of 5.44 in a similar manner, using gamma_0 and the previous ACV
+# generating function gamma_r(). The vector we created [acvf] should match exactly with 
+# the output of the gamma_k() function
+
+acvf_2 = gamma_k(phi_1, th_1, th_2, var, num)
+
+acvf
+
+acvf_2
+
+vect * gamma_0
+
+ts.plot(ts(acvf_2))
+ts.plot(ts(vect * gamma_0))
+
+
+
+
+
