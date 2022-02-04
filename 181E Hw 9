@@ -1,0 +1,326 @@
+# 9.12
+gaussian_MA_1 <- function(var, n, theta){
+  # I want to do this without a double for() loop, but to create MA samples multiple times, I must either
+  # utilize a function from a package, or create them independantly per iteration. 
+  # I like to use replicate() for random samples, but I will need at least one for() loop to make it work
+  
+  mean_vector = numeric(10000)
+  
+  for (i in (1:10000)){
+    
+    data = rnorm(n, 0, var)
+    
+    sample_MA_mean = mean( theta*(append(c(0), data[-n]))  +  data)
+    
+# the append(c(0), data[-n])  expression captures our Z[t-1] term with a Z[-1] of 0
+# it might be better to make Z[-1] = mean(Z[t]), but this is an easy change to make
+    
+    mean_vector[i] = sample_MA_mean
+  }
+  return(mean_vector)
+}
+
+hist(sqrt(50) * gaussian_MA_1(1, 50, 0.5), breaks = 50)
+hist(sqrt(100) * gaussian_MA_1(1, 100, 0.5), breaks = 50)
+hist(sqrt(200) * gaussian_MA_1(1, 200, 0.5), breaks = 50)
+
+hist(sqrt(50) * gaussian_MA_1(1, 50, -0.5), breaks = 50)
+hist(sqrt(100) * gaussian_MA_1(1, 100, -0.5), breaks = 50)
+hist(sqrt(200) * gaussian_MA_1(1, 200, -0.5), breaks = 50)
+# using theta = -0.5 gives us a tighter normal distribution. 
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+# 9.14
+# we can use the gaussian_MA_1() function from 9.12 to generate the sample means, but we must now 
+# compose this vector into the sample variance.
+# (9.2.1) says that the long-run variance is equal to f(0), where f(lambda) is the spectral density of
+# our MA(1)
+
+# Since our MA is only of lag 1, theta(B) = (1 - theta*B) --> f(lambda) = abs(1 + theta*exp(i*lambda))^2
+# thus f(0) = abs(1 + theta)^2 = 1.5^2 = 2.25    when theta = 0.5
+
+n = 50
+
+sample_variance_50 = var(sqrt(n) * gaussian_MA_1(1, n, 0.5))
+sample_variance_50
+
+n = 100
+
+sample_variance_100 = var(sqrt(n) * gaussian_MA_1(1, n, 0.5))
+sample_variance_100
+                      
+n = 200
+
+sample_variance_200 = var(sqrt(n) * gaussian_MA_1(1, n, 0.5))
+sample_variance_200
+                      
+# this gives me values near 2.25, exactly the prediction of the spectral density
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+# Exercise D
+# (i) Estimate the acf and pacf for lags up to 20 of the Wolfer sunspots data.
+# (ii) Give plots of your estimates as functions of the lag; what do the straight lines parallel to x-axis signify?
+# (iii) Repeat the above using as data the logarithm of the Wolfer sunspots data.
+sunspot_data = read.table("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\HW 1\\wolfer.dat")
+
+# to estimate gamma(k), we can take the sample mean of Y_t derived from X_t's provided by the table
+# Y_t = (X_t  -  mu) * (X_t+k  -  mu)
+
+# gamma(k) estimate = sum from [1, n-k] ((1/(n-k))*Y_t
+
+
+x_t = sunspot_data$V1
+
+acf_sunspots = acf(x_t, lag.max = 20, type = "correlation", plot = FALSE)
+acf_sunspots
+
+acf(x_t, lag.max = 20, type = "correlation")
+
+pacf_sunspots = pacf(x_t, lag.max = 20, plot = FALSE)
+pacf_sunspots
+
+pacf(x_t, lag.max = 20)
+
+# (ii)
+# The blue lines in the acf and pacf graphs signify the confidence interval for independant
+# and identically distributed data
+
+
+
+length(x_t)
+length(x_t[! x_t %in% c(0)])
+# the above lines show us that the sunspot data has a significant number of zero entries. 
+# To keep the logarithm function from causing errors of NA data, we can add a constant to our data vector
+
+loggable_x_t = x_t + 10
+
+log_acf = acf(loggable_x_t, lag.max = 20, type = "correlation", plot = FALSE)
+log_acf
+acf(loggable_x_t, lag.max = 20, type = "correlation")
+
+
+
+log_pacf = pacf(loggable_x_t, lag.max = 20, plot = FALSE)
+log_pacf
+pacf(loggable_x_t, lag.max = 20)
+
+# The log operation does not affect the ACF or PACF values!
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+# 9.44
+# We are asked to use data from an ARMA(2, 1) generated in 5.47. 5.47 instructs us to code 
+# Example 5.8.4 for a cyclic ARMA(2, 1)
+
+# the below generates n autocovariance terms of an ARMA(1,2) based on input angle omega, and constant rho
+ARMA_21 = function(omega, rho, n){
+  phi_1 = 2*rho*cos(omega)
+  phi_2 = -(rho^2)
+  th_1 = -rho*cos(omega)
+  
+  AR_coefficients = c(phi_1, phi_2)
+  MA_coefficients = c(1, th_1)
+  
+  
+  sample = rnorm(n + 1)
+  
+  MA_1 = filter(sample, MA_coefficients, method = "convolution", sides =  1)[2:(n + 1)]
+  AR_2 = filter(MA_1, AR_coefficients, method = "recursive")
+  
+
+# now AR_2 represents our data
+  return(AR_2)
+}
+
+
+
+# This function takes a vector of gamma(k) and computes the spectral density using a sum from 1 to n of the 
+# ACVF at k multiplied by (exp(-i * k * lambda) + exp(i * k * lambda)) = 2*cos(k*lambda)
+
+# f(L) = gamma(0) + sum (1,n) gamma(k)*2cos(Lk)
+
+periodogram = function(gamma_vec){
+  
+  n = length(gamma_vec)
+  L = seq(-pi, pi, length.out = n) 
+  
+  f_model = numeric(n)
+  
+  for (i in (1:n)){
+    sum_L_k = gamma_vec[1]
+    
+    for(k in (2:n)){
+      sum_L_k = sum_L_k + gamma_vec[k]*2*cos(k * L[i])
+    }
+    f_model[i] = sum_L_k
+  }
+  return(f_model)
+}
+  
+
+
+
+# this fucntion calculates the spectral density of a cyclic ARMA(2,1) for input SD, rho, and omega values, as well as 
+# a value for L which should be a vector of length 2pi (corresponding to the lambda value)
+
+f_of_L = function(L, p, w, sd){
+  k = sd^2 * (1 + (p^2)*(cos(w)^2) - 2*p*cos(w)*cos(L)) / (1 + 4*(p^2)*(cos(w)^2) + p^4 - 4*p*(1+p^2)*cos(w)*cos(L) + 2*p^2*cos(2*L))
+return(k)
+}
+
+
+
+
+# I intended to use this function for calculating true Spectral Density, but the output was inexplicably strange.
+# This is a more clear but more complicated way to create the Spectral Density function
+sp_density = function(w, p, size, sd){
+  
+  lambda = seq(-pi, pi, length.out = size)
+  f_lambda = numeric(size)
+  
+  # this for loop does not return proper values: all return entries besides the last are zero?
+  
+  for(j in (1:size)){
+    
+    L = lambda[i]
+    f_lambda[i] = sd^2 * (1 + (p^2)*(cos(w)^2) - 2*p*cos(w)*cos(L)) / (1 + 4*(p^2)*(cos(w)^2) + p^4 - 4*p*(1+p^2)*cos(w)*cos(L) + 2*p^2*cos(2*L))
+  }
+  return(f_lambda)
+}
+
+
+
+# Now we test samples of size 100, 200, and 400 and observe their plots
+
+
+# first we declare sample size, create the ARMA(2,1) data, and calculate its mean
+size_1 = 100
+X_1 = ARMA_21(pi/6, 0.8, size_1)
+
+mu_1 = mean(X_1)
+gamma_k_1 = numeric(size_1)
+
+# this for() loop calculates estimated ACVF in a vector format  
+for(i in (1:size_1)){
+  
+  n = size_1 - i + 1
+  gamma_k_1[i] = (1/size_1) * sum((X_1[1:n] - mu_1) * (X_1[i:size_1] - mu_1))
+}
+
+Estimated_SPD_1 = periodogram(gamma_k_1)
+
+lambda_1 = seq(-pi, pi, length.out = size_1)
+
+True_SPD_1 = f_of_L(lambda_1, 0.8, pi/6, 1)
+
+plot(lambda_1, Estimated_SPD_1, type = "l")
+lines(lambda_1, True_SPD_1 , col = 'red' )
+
+
+# now we test a sample size of 200 the same way
+size_2 = 200
+X_2 = ARMA_21(pi/6, 0.8, size_2)
+
+mu_2 = mean(X_2)
+gamma_k_2 = numeric(size_2)
+
+# this for() loop calculates estimated ACVF in a vector format  
+for(i in (1:size_2)){
+  
+  n = size_2 - i + 1
+  gamma_k_2[i] = (1/size_2) * sum((X_2[1:n] - mu_2) * (X_2[i:size_2] - mu_2))
+}
+
+Estimated_SPD_2 = periodogram(gamma_k_2)
+
+lambda_2 = seq(-pi, pi, length.out = size_2)
+
+True_SPD_2 = f_of_L(lambda_2, 0.8, pi/6, 1)
+
+plot(lambda_2, Estimated_SPD_2, type = 'l')
+lines(lambda_2, True_SPD_2 , col = 'red')
+
+
+
+# now we test a sample size of 400
+size_3 = 400
+
+X_3 = ARMA_21(pi/6, 0.8, size_3)
+
+mu_3 = mean(X_3)
+gamma_k_3 = numeric(size_3)
+
+# this for() loop calculates estimated ACVF in a vector format  
+for(i in (1:size_3)){
+  
+  n = size_3 - i + 1
+  gamma_k_3[i] = (1/size_3) * sum((X_3[1:n] - mu_3) * (X_3[i:size_3] - mu_3))
+}
+
+Estimated_SPD_3 = periodogram(gamma_k_3)
+
+lambda_3 = seq(-pi, pi, length.out = size_3)
+
+True_SPD_3 = f_of_L(lambda_3, 0.8, pi/6, 1)
+
+# we plot our estimated Spectral Density in black against the true spectral density in red
+plot(lambda_3, Estimated_SPD_3, type = "l")
+lines(lambda_3, True_SPD_3, col = 'red' )
+
+
+# We see that no matter the size of the sample, our projected Spectral Density Estimate does not largely improve its
+# correspondance to the true spectral density. More values are added, but the deviation from the true value is 
+# remains constant.
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+# Exercise F
+#
+
+dow_data = read.table("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\HW 1\\dow.dat")
+
+Dow_Levels = dow_data$V1
+Year = seq(2008, 2016, length.out = length(Dow_Levels))
+
+Dow_Log_Returns = numeric(length(Dow_Levels))
+
+Log_Dow_Levels = log(Dow_Levels)
+
+for (i in (2:length(Log_Dow_Levels))){
+  Dow_Log_Returns[i] = Log_Dow_Levels[i] - Log_Dow_Levels[i-1]
+}
+
+plot(Year, Dow_Log_Returns,  type = 'l')
+
+# in class, a student caludulated the ACF of the Dow log returns. If the AC values fall between the blue threshold, we know that
+# the sample is IID.
+# Such a sample would certainly be white noise, but there are looser covariance conditions for white noise.
+
+acf(Dow_Log_Returns, lag.max = 50, type = "correlation")
+pacf(Dow_Log_Returns, lag.max = 50, type = "correlation")
+
+# we see that some PACF and ACF values fall outside the confidence interval, so the data may not IID
+# 9.5.10  and 9.6.12 provide an independece test based on a confidence interval for ACF
+# In this example, since the ACF values consistently fall outside the CI for large lags, and we see more than
+# 3 out of 50 deviations from the CI, we can infer that the rate at which ACF values fall outside the CI is greater than
+# the alpha = 0.05 tolerance required for a confirmation of null hypothesis.
+
+
+
+
