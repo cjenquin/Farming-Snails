@@ -1,0 +1,90 @@
+# 5.4
+
+# this code should work, but I am not sure what bounds I ought to put on the coefficients to get values
+# that don't diverge to infinity
+AR_P <- function(coefficients, variance, size){
+  
+  p = length(coefficients)
+  
+# I am not 100 % certain what constitutes a proper size for burn-in period, so I made mine a  scalar plus a number based on the number of coefficients 
+  burn_in = p*10 + 100
+  
+  normal_sample = rnorm( burn_in + size, 0, variance)
+  
+  all_data = numeric(burn_in + size)
+  
+  #calculate burn-in period
+  for(i in (p + 1 : burn_in)){
+    all_data[i] =  coefficients %*% rev(all_data[(i - p): (i - 1)]) + normal_sample[i]
+  }
+  
+  # calculate real data 
+  for (j in((burn_in + 1):(burn_in + size))){
+    all_data[j] = coefficients %*% rev(all_data[(j - p) : (j - 1)]) + normal_sample[j]
+  }
+  
+  #create a vector of just real data
+  x_out = all_data[(burn_in + 1):(size + burn_in)]
+  
+  return(x_out)
+}
+
+
+# 5.5
+# (q) should equal length(coefficients) + 1   (I think)
+MA_Q <- function(coefficients, variance, size){
+  
+  q = length(coefficients)
+  
+  normal_sample = rnorm(size, 0, variance)
+  out = filter(normal_sample, coefficients, method = "convolution", sides =  1)
+}
+  
+
+
+#5.6
+# need to figure out what "burn in" exactly means (1.26 I think is where the book said to look)
+# 1/1-sqrt(1-phi^2)
+ARMA_PQ <- function(size, var_z, p_cof, q_cof){
+
+  p = length(p_cof)
+  burn_in = p*10 + 50
+  
+  #MA_Q takes arguments for coefficients, variance of white noise, and size of desired dataset
+  MA_vector = MA_Q(q_cof, var_z, burn_in + size)
+  # gives us vector of MA(q), length = size + burn_in
+  
+  all_data = numeric(burn_in + size)
+  
+  #calculate burn-in period
+  for(i in (p + 1 : burn_in)){
+    all_data[i] =  p_cof %*% rev(all_data[(i - p): (i - 1)]) + MA_vector[i]
+  }
+  
+  # calculate real data 
+  for (j in((burn_in + 1):(burn_in + size))){
+    all_data[j] = p_cof %*% rev(all_data[(j - p) : (j - 1)]) + MA_vector[j]
+  }
+  
+  #create a vector of just real data
+  x_out = all_data[(burn_in + 1):(size + burn_in)]
+  
+  return(x_out)
+}
+
+
+
+# 5.24
+
+phi = 1.05
+normal_sample = rnorm(100, 0, 1)
+AR_vect = numeric(100)
+
+for (i in (2:100)){
+  AR_vect[i] = phi*AR_vect[i-1] + normal_sample[i-1]
+}
+
+ts.plot(ts(AR_vect))
+
+# As we increase (phi > 1), the curve becomes more exponential in shape and progresses 
+# faster towards + infinity or - infinity
