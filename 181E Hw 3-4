@@ -1,0 +1,446 @@
+# HW 3.2
+
+##### Find the "SEASONALLY ADJUSTED DATA", don;t use ksmooth(),  try lapply() function
+
+SA_gas_data = read.csv("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\seasonal_adjusted_gas_sales.csv")
+SA.gas.data = SA_gas_data$Value
+gas.time = (1:length(SA.gas.data))
+
+smoothed_gas_trial = ksmooth(time(SA.gas.data), SA.gas.data, "normal", b = 2)
+smoothed_gas_5 = gaussian_filter(p = 2, data_vector = SA.gas.data)
+
+
+plot(gas.time, SA.gas.data, type = "l", xlab = "Time", ylab = "Gas  Price")
+lines(gas.time, smoothed_gas_trial$y , col = "blue")
+lines(smoothed_gas_5, type = "l", col = "orange")
+
+# I have written a somewhat clunky, but effective script to apply the gaussian kernel to an input data vector.
+# This version unfortunately excludes the outermost (p) points from the smoothing process.
+
+gaussian_filter <- function(p, data_vector){
+  
+  n = length(data_vector)
+  q = 2*p + 1
+  
+  output_vector = data_vector
+  
+# Below we create a vector of gaussian weights. For a fixed value of (p), these weights will remain constant as we iterate 
+# through our data.
+  
+  weights = dnorm(c(-p:p)/p)/sum(dnorm(c(-p:p)/p))
+  
+  for (i in (1+p:(n-p))){
+    
+    weighted_vector = rep(0, q)
+    
+    for(j in (-p:p)){
+      
+      # we populate the previously empty weighted vector with the weighted data values centered at time = (i + j)
+      weighted_vector[p + j + 1] = weights[p + j + 1]*data_vector[i+j]
+      
+    }
+    
+    # To calculate the projected mean at a time = t, we sum the weighted vector of length 2*p + 1 centered at data point X_t. 
+    output_vector[i] = sum(weighted_vector)
+  }
+  return(output_vector)
+}
+
+
+# We can add the start year to gas_data_t to have our x-axis display years or months instead of time from first recording
+
+smoothed_gas_1 = gaussian_filter(p = 0.5, data_vector = SA.gas.data)
+smoothed_gas_2 = gaussian_filter(p = 1, data_vector = SA.gas.data)
+smoothed_gas_3 = gaussian_filter(p = 2, data_vector = SA.gas.data)
+smoothed_gas_4 = gaussian_filter(p = 5, data_vector = SA.gas.data)
+smoothed_gas_5 = gaussian_filter(p = 10, data_vector = SA.gas.data)
+
+plot(gas.time, SA.gas.data, type = "l", xlab = "Time", ylab = "Gas  Price")
+lines(gas.time, smoothed_gas_1, type = "l", col = "green")
+
+plot(gas.time, SA.gas.data, type = "l", xlab = "Time", ylab = "Gas  Price")
+lines(gas.time, smoothed_gas_2, type = "l", col = "red")
+
+plot(gas.time, SA.gas.data, type = "l", xlab = "Time", ylab = "Gas  Price")
+lines(gas.time, smoothed_gas_3, type = "l", col = "blue")
+
+
+plot(gas.time, SA.gas.data, type = "l", xlab = "Time", ylab = "Gas  Price")
+lines(smoothed_gas_4, type = "l", col = "purple")
+
+plot(gas.time, SA.gas.data, type = "l", xlab = "Time", ylab = "Gas  Price")
+lines(smoothed_gas_5, type = "l", col = "orange")
+# indeed, larger bandwidths create a much more distinct smoothing as shown in the textbook
+
+# HW 3.3
+us_pop_data = read.table("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\HW 1\\USpop.dat")
+us_pop_t = seq(1, 99)
+adjusted_us_pop = us_pop_data$V1/(10^6)
+
+smoothed_pop_1 = ksmooth(us_pop_t, adjusted_us_pop, kernel = "normal", bandwidth = 0.5)
+smoothed_pop_2 = ksmooth(us_pop_t, adjusted_us_pop, kernel = "normal", bandwidth = 1)
+smoothed_pop_3 = ksmooth(us_pop_t, adjusted_us_pop, kernel = "normal", bandwidth = 2)
+
+smoothed_pop_4 = ksmooth(us_pop_t, adjusted_us_pop, kernel = "normal", bandwidth = 5)
+smoothed_pop_5 = ksmooth(us_pop_t, adjusted_us_pop, kernel = "normal", bandwidth = 10)
+smoothed_pop_6 = ksmooth(us_pop_t, adjusted_us_pop, kernel = "normal", bandwidth = 100)
+
+smoothed_pop_7 = ksmooth(us_pop_t, adjusted_us_pop, kernel = "normal", bandwidth = 50)
+smoothed_pop_8 = ksmooth(us_pop_t, adjusted_us_pop, kernel = "normal", bandwidth = 70)
+
+smoothed_pop_1 = gaussian_filter(p = 0.5, data_vector = adjusted_us_pop)
+smoothed_pop_2 = gaussian_filter(p = 1, data_vector = adjusted_us_pop)
+smoothed_pop_3 = gaussian_filter(p = 2, data_vector = adjusted_us_pop)
+smoothed_pop_4 = gaussian_filter(p = 5, data_vector = adjusted_us_pop)
+smoothed_pop_5 = gaussian_filter(p = 10, data_vector = adjusted_us_pop)
+smoothed_pop_6 = gaussian_filter(p = 20, data_vector = adjusted_us_pop)
+smoothed_pop_7 = gaussian_filter(p = 40, data_vector = adjusted_us_pop)
+
+# First we try plotting small bandwidths to see if the increment yields significant results
+plot(us_pop_t, adjusted_us_pop, type = "l", xlab = "Time", ylab = "US Population")
+lines(smoothed_pop_1, type = "l", col = "red")
+lines(smoothed_pop_2, type = "l", col = "blue")
+lines(smoothed_pop_3, type = "l", col = "green")
+
+
+# Next we try our largest bandwidths which will certainly show large differences
+plot(us_pop_t, adjusted_us_pop, type = "l", xlab = "Time", ylab = "US Population")
+lines(smoothed_pop_4, type = "l", col = "red")
+lines(smoothed_pop_5, type = "l", col = "blue")
+lines(smoothed_pop_6, type = "l", col = "green")
+
+# now lets see a combination to observe a greater range
+plot(us_pop_t, adjusted_us_pop, type = "l", xlab = "Time", ylab = "US Population")
+lines(smoothed_pop_3, type = "l", col = "red")
+lines(smoothed_pop_5, type = "l", col = "blue")
+lines(smoothed_pop_7, type = "l", col = "green")
+
+# Even the third plot is fairly bunched up, so we will create two new smoothed datasets
+smoothed_pop_7 = ksmooth(us_pop_t, adjusted_us_pop, kernel = "normal", bandwidth = 20)
+smoothed_pop_8 = ksmooth(us_pop_t, adjusted_us_pop, kernel = "normal", bandwidth = 50)
+
+plot(us_pop_t, adjusted_us_pop, type = "l", xlab = "Time", ylab = "US Population")
+lines(smoothed_pop_4, type = "l", col = "red")
+lines(smoothed_pop_7, type = "l", col = "blue")
+lines(smoothed_pop_8, type = "l", col = "green")
+
+#HW 3.4
+
+arima.sim(model = list(), n = 100) # this is a white noise process
+
+#look at filter()
+# using "recursive" in the filter() function can be used to create AR processes since the "recursive" call adds previously
+# caluclated values to the working sum 
+
+w_n = rnorm(100, 0, 1)
+x_axis = c(1:100)
+
+
+Lin_Filter <- function(p, data_vector){
+  
+  n = length(data_vector)
+  q = 2*p + 1
+  
+  output_vector = data_vector
+  constant_vector = replicate(n, (1/q))
+  
+  for (i in (1:(n-p))){
+    
+    output_vector[i] = 0
+    
+    for(j in (-p:p)){
+      
+      if((i+j) <= 0){
+        j = 1
+      }
+      
+      output_vector[i] = output_vector[i] + constant_vector[i+j]* data_vector[i+j]
+    }
+  }
+  return(output_vector)
+}
+
+filtered_wn_1 = Lin_Filter(p = 1, data_vector = w_n)
+filtered_wn_2 = Lin_Filter(p = 2, data_vector = w_n)  
+filtered_wn_3 = Lin_Filter(p = 3, data_vector = w_n)  
+
+  
+plot(x_axis, w_n, type = 'l')
+lines(x_axis, filtered_wn_1, col = "red")
+lines(x_axis, filtered_wn_2, col = "blue")
+lines(x_axis, filtered_wn_3, col = "green")
+
+
+p = 5
+test = filter(w_n, filter = rep(1/(2*p+1), 2*p+1), method = "convolution", sides = 2)
+
+lines(x_axis, test, type = "l", col = "blue")
+
+
+#HW 3.6
+
+pop_data = read.table("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\HW 1\\USpop.dat")
+x_axis = seq(1, length(pop_data$V1))
+
+pop.data = pop_data$V1
+
+log.pop.data = log(pop.data)
+
+cor(x_axis, pop.data)
+cor(x_axis, log.pop.data)
+
+plot(x_axis, pop.data, type = "l")
+
+plot(x_axis, log.pop.data, type = "l")
+
+lm(log.pop.data ~ x_axis)
+
+
+lines(x_axis, 18.20798 + x_axis*0.01283, col = "red")
+
+#HW 3.7
+# for ols, do a linear regression on the US population data over the timestamps
+
+us_pop_data = read.table("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\HW 1\\USpop.dat")
+us_pop_t = seq(1, 99)
+
+cor(us_pop_data$V1, us_pop_t)
+
+lm(us_pop_data$V1 ~ us_pop_t)
+
+intercept = 63186029
+slope = 2016351
+
+
+
+##
+lmpredict = predict(us_pop_lm, newdata = data.frame(c(1:length(us_pop_data))))
+##
+p = 20 
+filter (us_pop, filter = same as last problem)
+####
+
+
+
+us_pop_lm = intercept + slope*us_pop_t
+
+
+
+p_10_filter = Lin_Filter(p = 10, us_pop_data$V1 )
+p_20_filter = Lin_Filter(p = 20, us_pop_data$V1 )
+
+
+plot(us_pop_t, us_pop_lm, type = "l")
+lines(us_pop_t, p_20_filter, col = "red")
+lines(us_pop_t, p_10_filter, col = "blue")
+
+
+#HW 3.16
+us_pop_data = read.table("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\HW 1\\USpop.dat")
+
+population = us_pop_data$V1
+t = time(population)
+
+exp_formula = population ~ beta0 * exp(beta1 * t)
+start_guess = list(beta0 = population[1], beta1 = 0.1)
+
+exp_model <- nls(exp_formula, start = start_guess)
+
+beta0 = 8.314*10^7
+beta1 = 1.237/100
+
+model = beta0*exp(beta1*us_pop_t)
+
+ts.plot(population)
+lines(t, model, col = "red")
+
+#HW 3.25
+# asks us to augment the quadratic trend created in HW 3.18
+n <- 240
+time <- seq(1,n)
+beta0 <- 0
+beta1 <- .5
+beta2 <- 0.01
+sigma <- 20
+trend <- beta0 + beta1*time + beta2*time^2
+y <- sigma*rnorm(n)
+x <- trend + y
+
+# with a seasonal trend given by:
+beta3 = 30
+seasonal <- beta3*cos(pi*time/12)
+x <- trend + seasonal + y
+plot(ts(x))
+# beta must be very large (>10) for the seasonality effect to be well-visualized
+
+
+
+#HW 3.26
+Lin_Filter <- function(p, data_vector){
+  
+  n = length(data_vector)
+  q = 2*p + 1
+  
+  output_vector = data_vector
+  constant_vector = replicate(n, (1/q))
+  
+  for (i in (1:(n-p))){
+    output_vector[i] = 0
+    for(j in (-p:p)){
+      if((i+j) <= 0){
+        j = 1
+      }
+      output_vector[i] = output_vector[i] + constant_vector[i+j]* data_vector[i+j]
+    }
+  }
+  return(output_vector)
+}
+
+
+filtered_x_3 = Lin_Filter(p = 3, data_vector = x)
+filtered_x_5 = Lin_Filter(p = 5, data_vector = x)
+filtered_x_7 = Lin_Filter(p = 7, data_vector = x)
+
+filtered_x_12 = Lin_Filter(p = 12, data_vector = x)
+
+ts.plot(ts(x))
+lines(ts(filtered_x_3), col = "red")
+lines(ts(filtered_x_5), col = "blue")
+lines(ts(filtered_x_7), col = "yellow")
+
+lines(ts(filtered_x_12), col = "blue")
+
+
+
+#HW 3.40
+
+
+gas = log(gas.data)
+
+time = time(gas)
+
+time_sq = time^2
+
+for(i in c(1:11, 0)){
+  assign(paste("s", i, sep =""), as.numeric(time%%12 == i))
+}
+
+
+ts.plot(gas.ts)
+
+
+
+
+
+trend_model = lm(gas ~ time + time_sq)
+
+b_0 = trend_model$coefficients[1]
+b_1 = trend_model$coefficients[2]
+b_2 = trend_model$coefficients[3]
+
+de.trended = gas - b_0 - b_1*time - b_2*time_sq
+ts.plot(ts(de.trended))
+
+
+jan = rep(c(1,rep(0, 11)), 21)
+feb = rep(c(0, 1, rep(0, 10)), 21)
+mar = rep(c(0, 0, 1, rep(0, 9)), 21)
+apr = rep(c(0, 0, 0, 1, rep(0, 8)), 21)
+may = rep(c(rep(0, 4), 1, rep(0, 7)), 21)
+jun = rep(c(rep(0, 5), 1, rep(0, 6)), 21)
+jul = rep(c(rep(0, 6), 1, rep(0, 5)), 21)
+aug = rep(c(rep(0, 7), 1, rep(0, 4)), 21)
+sep = rep(c(rep(0, 8), 1, 0, 0, 0), 21)
+oct = rep(c(rep(0, 9), 1, 0, 0), 21)
+nov = rep(c(rep(0, 10), 1, 0), 21)
+dec = rep(c(rep(0, 11), 1), 21)
+
+season_lm = lm(de.trended ~ jan + feb + mar + apr + may + jun + jul + aug + sep + oct + nov + dec - 1)
+
+jan_c = season_lm$coefficients[1]
+feb_c = season_lm$coefficients[2]
+mar_c = season_lm$coefficients[3]
+apr_c = season_lm$coefficients[4]
+may_c = season_lm$coefficients[5]
+jun_c = season_lm$coefficients[6]
+jul_c = season_lm$coefficients[7]
+aug_c = season_lm$coefficients[8]
+sep_c = season_lm$coefficients[9]
+oct_c = season_lm$coefficients[10]
+nov_c = season_lm$coefficients[11]
+dec_c = season_lm$coefficients[12]
+
+
+
+
+
+season_model = jan_c*jan + feb_c*feb + mar_c*mar + apr_c*apr + may_c*may + jun_c*jun + jul_c*jul + aug_c*aug + sep_c*sep + oct_c*oct + nov_c*nov + dec_c*dec
+
+
+de.seasoned = de.trended - season_model
+
+lines(time, de.seasoned, col = "red")
+
+
+#HW 3.52
+#We want to write code that estimates the trend, seasonal, and de-meaned components, allowing for a general order p seasonal moving average
+#this should be applied to the Mauna Loa data with different choices (p) = 3,5,7   to see which yields the best result
+
+Mauna_Loa_CO2 = read.table("D:\\School Things\\Winter 2020 (RONA quarter #2)\\181E\\HW 1\\mauna.dat")
+M_data = Mauna_Loa_CO2$V1
+
+
+# the below does NOT remove trend 
+Differenced <- function(data_vector){
+  l = length(data_vector)
+  
+  return_vector = c(1:l)
+  
+  
+  for ( i in (2:l)){
+    return_vector[i] = data_vector[i] - data_vector[i-1]
+  }
+  return_vector[1] = data_vector[2] - data_vector[1]
+  return(data_vector - return_vector)
+}
+
+
+# the below DOES remove trend
+Lin_Filter <- function(p, data_vector){
+  
+  n = length(data_vector)
+  q = 2*p + 1
+  
+  output_vector = data_vector
+  constant_vector = replicate(n, (1/q))
+  
+  for (i in (1:(n-p))){
+    output_vector[i] = 0
+    for(j in (-p:p)){
+      if((i+j) <= 0){
+        j = 1
+      }
+      output_vector[i] = output_vector[i] + constant_vector[i+j]* data_vector[i+j]
+    }
+  }
+  return(output_vector)
+}
+
+#this function returns a data vector smoothed by an equal-weight filter with bandwidth (p)
+
+smoothed_data_3 = Lin_Filter(p = 3, M_data)
+smoothed_data_5 = Lin_Filter(p = 5, M_data)
+smoothed_data_7 = Lin_Filter(p = 7, M_data)
+smoothed_data_12 = Lin_Filter(p = 12, M_data)
+
+de_meaned_3 = ts(M_data - smoothed_data_3)
+de_meaned_5 = ts(M_data - smoothed_data_5)
+de_meaned_7 = ts(M_data - smoothed_data_7)
+de_meaned_12 = ts(M_data - smoothed_data_12)
+
+ts.plot(de_meaned_3)
+ts.plot(de_meaned_5)
+ts.plot(de_meaned_7)
+
+plot(time(de_meaned_7), de_meaned_7, type = "l")
+lines(de_meaned_3, col = "red")
