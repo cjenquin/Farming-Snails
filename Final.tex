@@ -1,0 +1,542 @@
+\documentclass[12pt,letterpaper]{article}
+\usepackage{fullpage}
+\usepackage[top=2cm, bottom=4.5cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{amsmath,amsthm,amsfonts,amssymb,amscd}
+\usepackage{lastpage}
+\usepackage{enumerate}
+\usepackage{fancyhdr}
+\usepackage{mathrsfs}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{amsmath}
+
+\hypersetup{%
+  colorlinks=true,
+  linkcolor=blue,
+  linkbordercolor={0 0 1}
+}
+ 
+\renewcommand\lstlistingname{Algorithm}
+\renewcommand\lstlistlistingname{Algorithms}
+\def\lstlistingautorefname{Alg.}
+
+\lstdefinestyle{Python}{
+    language        = Python,
+    frame           = lines, 
+    basicstyle      = \footnotesize,
+    keywordstyle    = \color{blue},
+    stringstyle     = \color{green},
+    commentstyle    = \color{red}\ttfamily
+}
+
+\setlength{\parindent}{0.0in}
+\setlength{\parskip}{0.05in}
+
+% Edit these as appropriate
+\newcommand\course{MATH 173A}
+\newcommand\hwnumber{FINAL}                  % <-- homework number
+
+
+\pagestyle{fancyplain}
+\headheight 35pt
+\lhead{\NetIDa}
+\lhead{\NetIDa\\\NetIDb}                 % <-- Comment this line out for problem sets (make sure you are person #1)
+\chead{\textbf{\Large Homework \hwnumber}}
+\rhead{\course \\ \today}
+\lfoot{}
+\cfoot{}
+\rfoot{\small\thepage}
+\headsep 1.5em
+
+\begin{document}
+0).
+\\
+I have read and understood the instructions above, including the ones pertaining to academic integrity. I certify that in completing my exam, I have followed these instructions.
+\\
+Craig Jenquin (CJ)
+\vspace{20pt}
+\\
+1). Let $f: R^n \implies R$ be a function and define the set:
+\[ E_f:= \{(x,w)\, \in\, R^{n+1}\; |\; x \in\, R^n,\; w\in\, R,\; f(x) \le w \}\]
+\\
+(a) Show that for all $x \in R^n$, $(x, f(x)) \in E_f$
+\vspace{10pt}\\
+Since $E_f$ is defined like this:
+\[ E_f:= \{(x,w)\, \in\, R^{n+1}\; |\; x \in\, R^n,\; w\in\, R,\; f(x) \le w \}\]
+We can say that 
+\[E_f_1 := \{(x,w)\, \in\, R^{n+1}\; |\; x \in\, R^n,\; w\in\, R,\; f(x) = w\} \subseteq E_f\]
+The subset $E_f_1$ contains only points of the form $(x, f(x))$ $\forall\; x \in\. R^n$
+\\
+Thus $\forall\; x \in\. R^n$, $(x, f(x)) \in\, E_f_1 \subseteq E_f$ \implies $(x, f(x)) \in\, E_f$
+\\
+\vspace{10pt}
+\\
+(b) Prove that if $E_f$ is a convex set, then $f$ is a convex function
+\vspace{10pt}\\
+$E_f$ is convex \implies $\forall\, x_1\,, x_2\, \in\, E_f,\: \forall\, \alpha\,\in [0,1]\: \alpha x_1 + (1-\alpha) x_2 \in\, E_f$
+\\
+Let $x_1 = (x, w_1), x_2 = (y, w_2) \in E_f$ such that $w_1 = f(x), w_2 = f(y)$: 
+\begin{equation*}
+    \begin{split}
+        &\implies \alpha(x, w_1) + (1-\alpha)(y, w_2) \in E_f
+        \\
+        &\implies (\alpha x + (1-\alpha) y,\; \alpha w_1 + (1-\alpha) w_2 ) \in E_f
+        \\
+        &\implies f(\alpha x + (1 - \alpha) y) \le \alpha w_1 + (1-\alpha)w_2
+    \end{split}
+\end{equation*}
+Thus, by our definition of $w_1, w_2$
+\\
+\[ f(\alpha x + (1 - \alpha) y) \le \alpha f(x) + (1-\alpha) f(y) \]
+The definition of a convex function $f$
+\vspace{10pt}
+\\
+(c) Conversely, prove that if $f$ is a convex function, then $E_f$ is a convex set
+\vspace{10pt}\\
+If $f$ is convex then, $\forall x,\, y\, \in\, R^n,\: \forall\, \alpha\, \in\; [0,1],\hspace{20pt} f(\alpha x + (1-\alpha) y) \le\, \alpha f(x) + (1-\alpha) f(y) $
+Let $x_1 = (x, w_1), x_2 = (y, w_2) \in E_f$ such that $[w_1 = f(x)] \le f(y) \le w_2$\\
+Let $x_3 = \alpha x + (1-\alpha) y \:|\: x_3\in E_f$
+\begin{equation*}
+    \begin{split}
+        f(\alpha x + (1-\alpha) y &\le \alpha f(x) + (1-\alpha)f(y)
+        \\
+        \implies f(x_3) &\le \alpha w_1 + (1-\alpha)w_2
+        \\
+        \implies f(x_3) &\le w_2
+    \end{split}
+\end{equation*}
+\\
+Thus $\forall x_1, x_2 \in E_f, x_3 = $
+\vspace{10pt}
+\\
+2). Let $f: R^2 \implies R$ be given by 
+\[ f(x_1, x_2) = x_1^2 + 2x_1 x_2 + (x_2-1)^2\]
+\\
+(a) Is $f$ strongly convex? Justify
+\vspace{10pt}\\
+Note first that:
+\[\triangledown f(x) = 
+\begin{bmatrix}
+2x_1 + 2x_2
+\\
+2x_1 + 2(x_2 - 1)
+\end{bmatrix}\]
+\[y-x = \begin{bmatrix}
+y_1 - x_1
+\\
+y_2 - x_2
+\end{bmatrix} \]
+\[||y-x||^2 = y_1^2 + y_2^2 -2x_1y_1 - 2x_2y_2 + x_1^2 + x_2^2\]
+$f$ is strongly convex if:
+\[ f(y) \ge f(x) + \triangledown f(x)^T(y-x) + \frac{1}{2}c||y-x||^2\]
+The whole expanded expression looks like
+\begin{equation*}
+    \begin{split}
+        y_1^2 + 2 y_1 y_2 + y_2^2 -2y_2 + 1 \ge\; &x_1^2 + 2x_1 x_2 + x_2^2 - 2x_1 + 1 
+        \\
+        &+ 2x_1y_1 - 2x_1^2 + 2x_2 y_1 - 2 x_2 x_1 + 2 x_1 y_2 + 2x_2 y_2 - 2y_2 - 2x_1 x_2 - 2x_2^2 + 2x_2
+        \\
+        &+ c(y_1^2 + y_2^2 -2x_1y_1 - 2x_2y_2 + x_1^2 + x_2^2)
+    \end{split}
+\end{equation*}
+We can rewrite this massive calculation so we an try to cancel terms.
+\begin{equation*}
+    \begin{split}
+        \implies (y_1 + y_2)^2 - 2y_2 + 1 \ge\; &(x_1 + x_2)^2 - 2x_2 + 2x_2 + 1 -2y_2
+        \\
+        &+ 2x_1 y_1 - 2x_1^2
+        \\
+        &+2x_2y_1 - 2x_1x_2
+        \\
+        &+2x_1y_2 -2x_1x_2
+        \\
+        &+2x_2y_2 -2x_2^2
+        \\
+        &+c((y_1 - x_1)^2 + (y_2 - x_2)^2)
+    \end{split}
+\end{equation*}
+\vspace{350pt}
+\\
+This may be a rather inefficient recombination, but I'm doing my math as I go, this one is huge
+\begin{equation*}
+    \begin{split}
+        (y_1 + y_2)^2 \ge\; -(x_1 + x_2)^2 + 2((x_1 + x_2)(y_1 + y_2) + c((y_1 - x_1)^2 + (y_2 - x_2)^2)
+        \\
+        \implies (y_1 + y_2)^2 -2((x_1 + x_2)(y_1 + y_2) + (x_1 + x_2)^2 &\ge\;  c((y_1 - x_1)^2 + (y_2 - x_2)^2)
+        \\
+        \implies ((y_1 + y_2) - (x_1 + x_2))^2 &\ge\; c((y_1 - x_1)^2 + (y_2 - x_2)^2)
+        \\
+        \implies \frac{((y_1 + y_2) - (x_1 + x_2))^2}{(y_1 - x_1)^2 + (y_2 - x_2)^2} &\ge\; c
+    \end{split}
+\end{equation*}
+\\
+We can tell that this inequality is not necessarily true because the numerator can be 0 while the denominator is not undefined. Consider the following when $y = (3, 7), x = (5, 5)$. The inequality results in:
+\\
+\[ \frac{((3+7) - (5+5))^2}{(3-5)^2 + (7-5)^2} \ge\; c\]
+Since $c > 0$ by definition, $f(x)$ must not be convex
+\vspace{10pt}
+\\
+(b) With $x^{(0)} = (0,0)$ and $x^{(-1)} = (0,0)$, write down two iterations of GD with momentum. Express $x^{(1)}, x^{(2)}$ in terms of $\mu, \beta$
+\vspace{10pt}\\
+In a gradient descent with momentum, we use the following update step:
+\[x^{t+1} = x^t - \mu \triangledown f(x^t) + \beta (x^t - x^{t-1}) \] 
+Recall that 
+\[\triangledown f(x) = 
+\begin{bmatrix}
+2x_1 + 2x_2
+\\
+2x_1 + 2(x_2 - 1)
+\end{bmatrix}\]
+\begin{equation*}
+    \begin{split}
+        x^1 &= \begin{bmatrix}
+        0
+        \\
+        0
+        \end{bmatrix}
+        -\mu \begin{bmatrix}
+        0
+        \\
+        2
+        \end{bmatrix} = \begin{bmatrix}
+        0
+        \\
+        2\mu
+        \end{bmatrix}
+        \\
+        x^2 &= \begin{bmatrix}
+        0
+        \\
+        2\mu
+        \end{bmatrix}
+        - \mu \begin{bmatrix}
+        4
+        \\
+        2
+        \end{bmatrix}
+        +
+        \beta \begin{bmatrix}
+        0
+        \\
+        2
+        \end{bmatrix}
+        =
+        \begin{bmatrix}
+        4\mu
+        \\
+        2\beta
+        \end{bmatrix}
+    \end{split}
+\end{equation*}
+\vspace{10pt}
+\\
+3).
+\vspace{10pt}
+\\
+(a) Suppose $f$ is L-smooth and convex and you want to minimize this function using GD with constant step size $\mu$. How should you select $\mu$? What does this choice of $\mu$ allow you to say about $f(x^{(t)} - f(x)^*$? Justify
+\vspace{10pt}\\
+For an L-smooth $f$, if we select $ 0\le\; \mu \le\; \frac{1}{L}$ we can prove that 
+\begin{equation*}
+    \begin{split}
+        f(x^t)-f(x^*) &\le\; \frac{1}{2t\mu}||x^0 - x^*||
+    \end{split}
+\end{equation*}
+This result is discussed on page 2 of Lecture 10
+\vspace{10pt}
+\\
+(b) Suppose $f$ is L-smooth and strongly convex with constant $c$, and we still want to minimize this function using GD with constant step size $\mu$.  How should you select $\mu$? What does this choice of $\mu$ allow you to say about $f(x^{(t)} - f(x)^*$? Justify
+\vspace{10pt}\\
+Strong convexity guarantees that for any choice of $mu$ with convexity constant $c$, and $\forall z \in$ the domain of $f$: 
+\begin{equation*}
+    \begin{split}
+        f(z) - f(x^*) &\le\; \frac{||\triangledown F(z)||^2}{2c}
+        \\
+        \implies f(x^t) - f(x^*) &\le\; \frac{||\triangledown F(x^t)||^2}{2c}
+    \end{split}
+\end{equation*}
+If we assume that $||\triangledown^2 f(x)|| \le\; L$, and select $\mu \le\; \frac{1}{L}$, we are assured that 
+\begin{equation*}
+    \begin{split}
+        f(x^t)-f(x^*) \le\; (1-\frac{c}{L})^t [f(x^0) - f(x^*)]
+    \end{split}
+\end{equation*}
+Both of these results are discussed on pages 4, 5 of Lecture 17
+\vspace{10pt}
+\\
+(c) Comparing the bounds on $f(x^{(t)} - f(x)^*$ from parts (a) and (b), which is better and why?
+\vspace{10pt}\\
+The bound from part (a) requires knowledge of the optimizer $x^*$ to be truly useful. Further more, the relationship of $\mu t$ in the denominator of the bound may require that $t$, or the number of GD steps, be very large to approach a reasonable accuracy, especially if L is large
+\vspace{10pt}
+\\
+The first bound in part (b) that is true of all strongly convex functions requires no knowledge of the minimizer $x^*$ and becomes tighter as $c$ is larger (for more strongly convex functions). The second bound, which requires the assumption $||\triangledown^2f(x)|| \le\, L$, decays in exponential time based on the number of iterations, and approaches zero much more quickly than the bound for an L-smooth function. One drawback is that some knowledge of the minimum of our function is required to work properly, although this value can be estimated and the bound will still approach zero after a large enough value for $t$
+\\
+The first bound of part (b) is the most general, but the second bound becomes more accurate more quickly. The bound in (a) is useful, but requires more information, and is not very strong.
+\vspace{10pt}
+\\
+4).
+\[ A^T A x = A^T b\]
+\vspace{10pt}
+\\
+(a) Write the associated linear CG method for solving the above system
+\vspace{10pt}\\
+Let $A^T A = Q$, let $A^T b = j$:
+\[ A^T A x = A^T b \implies Qx = j\]
+\\
+Then define the following system
+\begin{equation*}
+    \begin{split}
+        r_0 &= Qx_0 - j \hspace{30pt}= A^T A x_0 - A^T b
+        \\
+        p_0 &= r_0
+        \\
+        \alpha_t &= \frac{r_t^T r_t}{p_t^T Q p_t} 
+        \\
+        x^{t+1} &= x^t + \alpha_t p_t
+        \\
+        r_{t+1} &= r_t + \alpha_t Q p_t \hspace{30pt}=  r_t + \alpha_t A^T A p_t
+        \\
+        \beta_{t+1} &= \frac{r_{t+1}^T r_{t+1}}{r_t^T r_t}
+        \\
+        p_{t+1} &= -r_{t+1} + \beta_{t+1}p_t
+    \end{split}
+\end{equation*}
+Equation courtesy of Lecture 16
+\vspace{10pt}
+\\
+(b) Assuming A is a 5x3 matrix, and $A^T A$ is positive definite, how many iterations (at most) will it take this method to converge to the solution? Justify.
+\vspace{10pt}\\
+If A is a $5 \times 3$ matrix, then $Q = A^T A = 3 \times 3$. The method of conjugate gradient descent on a quadratic converges to the optimal solution in at most $n$ steps, where $n$ is the number of singular eigenvalues in the matrix Q. 
+\\
+In this case, since Q is $3 \times 3$, the above system must converge in at most 3 steps of descent. 
+\vspace{10pt}
+\\
+This Theorem is clarified on page 3 of Lecture 16
+\vspace{10pt}
+\\
+(c) f(x) = $||Ax-b||^2$
+\vspace{10pt}\\
+Newton's method proceeds as follows:
+\[x^{t+1} = x^{t} - [\triangledown^2f(x^t)]^{-1}\triangledown f(x^t) \]
+\begin{equation*}
+    \begin{split}
+        \triangledown f(x) &= 2A^T(Ax-b)
+        \\
+        \triangledown^2 f(x) &= 2A^T A
+        \\
+        \implies
+        \\
+        x^{t+1} &= x^t - 4(A^T A)^{-1}(A^T Ax^t - A^T b)
+        \\
+        &= 4(A^T A)^{-1}A^T b - 3 x^t
+    \end{split}
+\end{equation*}
+\vspace{10pt}
+\\
+(d) How many iterations will it take for Newton’s method to converge, with arbitrary choices of A, b, from an arbitrary initialization $x^0$ assuming $x^0$ is not the optimizer?
+\vspace{10pt}\\
+Newton's method does not necessarily converge to the minimizer of a function. Thus, we cannot say how many steps the descent will take to attain the minimizer.
+\vspace{10pt}
+\\
+(e)Discuss the tradeoffs involved in using Newton’s method versus Conjugate Gradient for minimizing this function.
+\vspace{10pt}\\
+As you can see, the Conjugate gradient method requires many calculations at each step. After initializing a few variables, at each step, five different values must be calculated, usually involving systems of inner products or other vector operations. This is not too hard to code into a script, but could be very tedious to do by hand, even if it does converge in only three steps.\\
+The most important advantage of the CG method is that convergence is guaranteed, AND it is quite quick (in terms of iterations)
+\vspace{10pt}
+\\
+Newton's method is a much simpler system, but involves a few tedious calculations as well. Not only must one calculate the gradient and the hessian of a new equation, one must calculate the inverse hessian as well. With a very large matrix, this can be extremely challenging. Moreover, since Newton's method is not guaranteed to converge, and can get stuck in infinite loops, we are not certain it can even solve the system.
+\vspace{10pt}
+\\
+Overall, Conjugate Gradient Method is far more reliable and in many cases less computationally intensive.
+\vspace{10pt}
+\\
+5). 
+\[F(x) := \frac{1}{2}x^T Ax \hspace{10pt} A = \begin{bmatrix}
+1 & 0
+\\ 
+0 & \gamma
+\end{bmatrix} \hspace{10pt} 0<\gamma<1 \implies ||A|| = 1 \]
+\vspace{10pt}
+\\
+(a) Write down gradient descent with constant step size $\mu$. Write $(x_1^{t+1}, x_2^{t+1})$ in terms of $(x_1^t,\; x_2^t)\; \gamma,\; \mu$
+\vspace{10pt}\\
+\begin{equation*}
+    \begin{split}
+        \triangledown F(x) = Ax = \begin{bmatrix}
+        x_1
+        \\
+        \gamma x_2
+        \end{bmatrix}
+        \\
+        x^{t+1} = x^t -\mu A \begin{bmatrix}
+        x_1^t
+        \\
+        x_2^t
+        \end{bmatrix}
+        \\
+        \implies
+        \begin{bmatrix}
+        x_1^{t+1}
+        \\
+        x_2^{t+1}
+        \end{bmatrix} = \begin{bmatrix}
+        (1 - \mu) x_1^t
+        \\
+        (1 -\mu)\, \gamma\, x_2^t
+        \end{bmatrix}
+    \end{split}
+\end{equation*}
+\vspace{300pt}
+\\
+(b) write the same expression in terms of $x_1^0,\; x_2^0$
+\vspace{10pt}\\
+Using notes from Lecture 13, we can use the following form:
+\begin{equation*}
+    \begin{split}
+        x^{t+1} = (I-\mu A)^{t+1} x^0
+    \end{split}
+\end{equation*}
+\begin{equation*}
+    \begin{split}
+    \implies
+    \\
+\begin{bmatrix}
+x^{t+1}_1
+\\
+x^{t+1}_2
+\end{bmatrix}  &= (I -\mu A)^{t+1} \begin{bmatrix}
+        x_1^0
+        \\
+        x_2^0
+        \end{bmatrix}
+    \end{split}
+\end{equation*}
+\vspace{10pt}
+\\
+(c) suppose $x^0 = (1,1)$. Find an expression for the square error $|| x^t - x^*||^2$ in terms of $\mu$ 
+\vspace{10pt}\\
+We know that \[F(x) = x_1^2 + \gamma x_2^2 \ge\; 0 \implies x^* = (0,0)\]
+\begin{equation*}
+    \begin{split}
+        ||x^{t+1}||^2 &= ||(I-\mu A)^{t+1} x^0||
+        \\
+        &\le\; ||(I - \mu A)^{t+1}||\;||x_0||
+        \\
+        \implies ||x^{t+1}||^2 &\le\; |(1-\mu)^{t+1}|(\sqrt{2})
+    \end{split}
+\end{equation*}
+\vspace{10pt}
+\\
+(d)
+\vspace{10pt}\\
+$0 < \mu < 1$ must be true if the expression in (c) is to converge to $\Vec{0}$ since exponentiating any value greater than 1 will diverge to infinity
+\vspace{10pt}
+\\
+(e)
+\vspace{10pt}\\
+Lecture 13 page 7 provides an optimal $\mu$ for quadratic line-searches like these.
+\\
+selecting  \[ \mu = \frac{2}{1 + \gamma}\]
+results in a convergence rate of \[ \frac{1 - \gamma }{ 1 + \gamma} \]
+\vspace{10pt}
+\\
+6).
+\vspace{10pt}
+\\
+(a) 
+\[f(w) = log(1+e^{w^T x}) \]
+Show that this function is Lipschitz with L = $||x||$
+\vspace{10pt}\\
+\begin{equation*}
+    \begin{split}
+        \triangledown f(w) = \begin{bmatrix}
+        \frac{x_1 e^{w^T x}}{1 + e^{w^T x}} 
+        \\
+        \vdots
+        \\
+        \frac{x_n e^{w^T x}}{1 + e^{w^T x}}
+        \end{bmatrix}
+        &= \frac{e^{w^T x}}{1 + e^{w^T x}} \Vec{x}
+        \\
+        \implies ||\triangledown f(w)|| = ||\frac{e^{w^T x}}{1 + e^{w^T x}} \Vec{x}|| = \frac{e^{w^T x}}{1 + e^{w^T x}}||\Vec{x}|| &\le\; ||x||
+    \end{split}
+\end{equation*}
+\vspace{10pt}
+\\
+(b)
+\[ F(w) = \sqrt{f_1(w)^2 + f_2(w)^2 + \dots + f_n(w)^2} \]
+Show that for n Lipschitz functions $f_i$ with Lipschitz constants $L_i$, show that F(w) is Lipschitz 
+\vspace{10pt}\\
+This does not feel like the correct form of solution, there are too many things that could be wrong with it. Unfortunately I do not see an alternative involving familiar work with the gradient (I think the derivatives with respect to each $w_i$ are too ingrained in the sum to be extricated appropriately), so my only option is to use the hint right away and hope that gradient operations do indeed hold over inequalities of functions (but my intuition says they do not).
+\begin{equation*}
+    \begin{split}
+        F(w) &= \sqrt{\sum_{i=1}^n f_i(w)}
+        \\
+       \implies F(w) &\le \sum_{i=1}^n{|f_i(w)|}
+       \\
+       \triangledown F(w) &\le \triangledown \sum_{i=1}^n{|f_i(w)|} 
+       \\
+       \implies \triangledown F(w) &\le\; 
+    \end{split}
+\end{equation*}
+I'm not gonna write something I don't know, I just cant seem to get a $\triangledown f_i(x)$ in the function no matter what I do, the summation over all $f_i$ makes it impossible to remove the gradient of just one when taking derivatives. 
+\vspace{10pt}
+\\
+(c)
+\vspace{10pt}\\
+From part (b), we know that $ F(w) &= \sqrt{\sum_{i=1}^n f_i(w)}$ is Lipschitz provided each $f_i(w)$ is Lipschitz
+\\
+The equation
+\[ log(1 + e^{w^T x_i}) - y_i \]
+is Lipschitz by (a), with L = $||x||$, thus
+\[ F(w) &= \sqrt{\sum_{i=1}^n f_i(w)}\]
+is Lipschitz with 
+\[L = \sum_{i = 1}^n L_i \]
+I am not certain the above formula is correct. It is a guess at what the result of 6(b) ought to be.
+\vspace{10pt}
+\\
+7).
+\vspace{10pt}
+\\
+(a)
+\vspace{10pt}\\
+\begin{equation*}
+    \begin{split}
+        \frac{d}{d w_j}F(w) &= \frac{1}{2} \frac{\frac{d}{d w_j}\sum_{i=1}^n(log(1+e^{w^T x_i}) - y_i)^2}{\sqrt{\sum_{i=1}^n (log(1+e^{w^T x_i}) - y_i)^2}}
+        \\
+        \frac{d}{d w_j}F(w) &= \frac{\sum_{i=1}^n(log(1+e^{w^T x_i}) - y_i)}{\sqrt{\sum_{i=1}^n (log(1+e^{w^T x_i}) - y_i)^2}} \frac{d}{d w_j}(log(1+e^{w^T x_i})
+        \\
+         \frac{d}{d w_j}F(w) &= \frac{\sum_{i=1}^n(log(1+e^{w^T x_i}) - y_i)}{\sqrt{\sum_{i=1}^n (log(1+e^{w^T x_i}) - y_i)^2}} \frac{x_j e^{w^T x_i}}{1+e^{w^T x_i}}
+         \\
+         \frac{d}{d w_j}F(w) &= [ x_j ] \frac{\sum_{i=1}^n(log(1+e^{w^T x_i}) - y_i)}{\sqrt{\sum_{i=1}^n (log(1+e^{w^T x_i}) - y_i)^2}} \frac{e^{w^T x_i}}{1+e^{w^T x_i}}
+         \\
+        \implies
+        \\
+         \triangledown F(w) &= \Vec{x}\; \frac{\sum_{i=1}^n(log(1+e^{w^T x_i}) - y_i)}{\sqrt{\sum_{i=1}^n (log(1+e^{w^T x_i}) - y_i)^2}} \frac{e^{w^T x_i}}{1+e^{w^T x_i}}
+    \end{split}
+\end{equation*}
+\vspace{10pt}
+\\
+
+(b)
+\vspace{10pt}\\
+Nesterov acceleration updates as follows 
+\begin{equation*}
+    \begin{split}
+        q^t &= x^t + \beta(x^t - x^{t-1})
+        \\
+        x^{t+1} &= q^t - \mu \triangledown f(q^t)
+        \\
+        \implies
+        \\
+         x^{t+1} &= q^t - \mu \Vec{q^t}\; \frac{\sum_{i=1}^n(log(1+e^{w^T q_i}) - y_i)}{\sqrt{\sum_{i=1}^n (log(1+e^{w^T q_i}) - y_i)^2}} \frac{e^{w^T q_i}}{1+e^{w^T q_i}}
+    \end{split}
+\end{equation*}
+Let $\beta = 0.6, \mu = 10^{-3}$.
+\\
+Stop when $\triangledown f(q_t) \le\; \frac{1}{10}$
+\vspace{10pt}
+\\
+This one took me all of today and a bit of yesterday to complete. 1(c) 2(a) and 6(b) are killers and took a ton of my time (more than 3 hours combined) and I STILL don't have good answers 1.5 hours before the deadline. 
+\end{document}
